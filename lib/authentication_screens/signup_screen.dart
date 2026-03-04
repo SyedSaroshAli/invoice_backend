@@ -1,5 +1,5 @@
 // ignore_for_file: deprecated_member_use
-
+/*
 import 'package:flutter/material.dart';
 import 'package:school_management_system/authentication_screens/signin.dart';
 import 'package:school_management_system/services/auth_service.dart';
@@ -417,3 +417,4 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 }
+*/

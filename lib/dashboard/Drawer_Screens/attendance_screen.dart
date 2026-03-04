@@ -3,8 +3,10 @@ import 'package:get/get.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/services.dart' show NetworkAssetBundle, rootBundle;
 import 'package:school_management_system/controllers/attendance_controller.dart';
-
+/*
 class AttendanceScreen extends StatelessWidget {
   const AttendanceScreen({super.key});
 
@@ -91,7 +93,7 @@ class AttendanceScreen extends StatelessWidget {
                         Expanded(
                           child: _StatCard(
                             icon: Icons.event_busy,
-                            label: "Leave",
+                            label: "Late",
                             count: controller.leaveCount,
                             color: const Color(0xFFF59E0B),
                           ),
@@ -655,7 +657,7 @@ class _ExpandableFilter extends StatelessWidget {
                 color: Theme.of(context).colorScheme.primary,
               ),
             ),
-            value: controller.selectedMonth.value,
+            initialValue: controller.selectedMonth.value,
             isExpanded: true,
             items: AttendanceController.months.map((month) {
               return DropdownMenuItem(value: month, child: Text(month));
@@ -705,7 +707,7 @@ class _StatCard extends StatelessWidget {
               ),
               child: Icon(icon, color: color, size: 24),
             ),
-            const SizedBox(height: 12),
+          SizedBox(height: 12),
             Text(
               label,
               style: Theme.of(
@@ -845,5 +847,1069 @@ class _RecordsList extends StatelessWidget {
         ),
       );
     });
+  }
+} 
+
+class AttendanceScreen extends GetView<AttendanceController> {
+  const AttendanceScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text("Attendance"),
+        centerTitle: true,
+        elevation: 0,
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Get.back(),
+        ),
+      ),
+      body: Column(
+        children: [
+          // --- Top Action Bar ---
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => controller.toggleFilter(),
+                    icon: const Icon(Icons.filter_alt_outlined, size: 18),
+                    label: const Text("Filter"),
+                    style: OutlinedButton.styleFrom(foregroundColor: Colors.blue[800]),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {}, // Trigger PDF generation
+                    icon: const Icon(Icons.picture_as_pdf, size: 18),
+                    label: const Text("Generate PDF",style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.blue[700],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // --- Expandable Filter Section ---
+          Obx(() => AnimatedSize(
+                duration: const Duration(milliseconds: 300),
+                child: controller.isFilterExpanded.value
+                    ? Container(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Month Dropdown
+                            const Text("Select Month", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                            const SizedBox(height: 4),
+                            DropdownButtonFormField<String>(
+                              value: controller.selectedMonth.value,
+                              isExpanded: true,
+                              decoration: InputDecoration(
+                                prefixIcon: const Icon(Icons.calendar_month, color: Colors.blue),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                              ),
+                              items: AttendanceController.months
+                                  .map((m) => DropdownMenuItem(value: m, child: Text(m)))
+                                  .toList(),
+                              onChanged: (val) => controller.setMonth(val!),
+                            ),
+                            const SizedBox(height: 16),
+                            
+                            // Year Dropdown - Added exactly below Month
+                            const Text("Select Year", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                            const SizedBox(height: 4),
+                            DropdownButtonFormField<String>(
+                              value: controller.selectedYear.value,
+                              isExpanded: true,
+                              decoration: InputDecoration(
+                                prefixIcon: const Icon(Icons.history, color: Colors.blue),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                              ),
+                              items: controller.availableYears
+                                  .map((y) => DropdownMenuItem(value: y, child: Text(y)))
+                                  .toList(),
+                              onChanged: (val) => controller.setYear(val!),
+                            ),
+                          ],
+                        ),
+                      )
+                    : const SizedBox.shrink(),
+              )),
+
+          // --- Main Content Area ---
+          Expanded(
+            child: Obx(() {
+              if (controller.isLoading.value) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    // Summary Stats Cards
+                    Row(
+                      children: [
+                        _buildStatCard("Present", controller.presentCount.toString(), Colors.green),
+                        const SizedBox(width: 8),
+                        _buildStatCard("Absent", controller.absentCount.toString(), Colors.red),
+                        const SizedBox(width: 8),
+                        _buildStatCard("Late", controller.leaveCount.toString(), Colors.orange),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Daily Records Header
+                    Row(
+                      children: [
+                        Icon(Icons.history, size: 20, color: Colors.blue[900]),
+                        const SizedBox(width: 8),
+                        const Text("Daily Records", 
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // List of Records or Empty State
+                    controller.filteredRecords.isEmpty
+                        ? _buildEmptyState()
+                        : _buildRecordsList(),
+                  ],
+                ),
+              );
+            }),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatCard(String label, String value, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey[300]!),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              label == "Present" ? Icons.check_circle : (label == "Absent" ? Icons.cancel : Icons.calendar_today),
+              color: color.withOpacity(0.5),
+              size: 24,
+            ),
+            const SizedBox(height: 8),
+            Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+            Text(value, style: TextStyle(color: color, fontSize: 22, fontWeight: FontWeight.bold)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Container(
+      height: 300,
+      alignment: Alignment.center,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.image_outlined, size: 48, color: Colors.grey[300]),
+          const SizedBox(height: 12),
+          Text("No Records for This Month", style: TextStyle(color: Colors.grey[400])),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecordsList() {
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: controller.filteredRecords.length,
+      itemBuilder: (context, index) {
+        final record = controller.filteredRecords[index];
+        return Card(
+          margin: const EdgeInsets.only(bottom: 8),
+          child: ListTile(
+            title: Text(record.date),
+            trailing: Text(
+              controller.normalizeStatus(record.status),
+              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue[700]),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+*/
+/* CORRECT CODE 
+class AttendanceScreen extends StatelessWidget {
+  const AttendanceScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = Get.find<AttendanceController>();
+
+    return Scaffold(
+      appBar: AppBar(title: const Text("Attendance"), centerTitle: true),
+      body: Obx(() {
+        if (controller.isLoading.value) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        return SingleChildScrollView(
+          child: Column(
+            children: [
+              // Action Buttons (Filter + PDF)
+              _ActionButtons(controller: controller),
+
+              // Expandable Filter
+              _ExpandableFilter(controller: controller),
+
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (controller.errorMessage.value.isNotEmpty)
+                      _buildErrorCard(context, controller.errorMessage.value),
+
+                    // Statistics Cards
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _StatCard(
+                            icon: Icons.check_circle,
+                            label: "Present",
+                            count: controller.presentCount,
+                            color: const Color(0xFF10B981),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _StatCard(
+                            icon: Icons.cancel,
+                            label: "Absent",
+                            count: controller.absentCount,
+                            color: const Color(0xFFEF4444),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _StatCard(
+                            icon: Icons.event_busy,
+                            label: "Late",
+                            count: controller.leaveCount,
+                            color: const Color(0xFFF59E0B),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    // Daily Records Header
+                    Row(
+                      children: [
+                        Icon(Icons.history, color: Theme.of(context).colorScheme.primary),
+                        const SizedBox(width: 8),
+                        Text(
+                          "Daily Records",
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 16),
+                    _RecordsList(controller: controller),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      }),
+    );
+  }
+
+  Widget _buildErrorCard(BuildContext context, String message) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Card(
+        color: Colors.red.withOpacity(0.1),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              const Icon(Icons.info_outline, color: Colors.red),
+              const SizedBox(width: 12),
+              Expanded(child: Text(message, style: const TextStyle(color: Colors.red))),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// --- Action Buttons with Integrated PDF Logic ---
+class _ActionButtons extends StatelessWidget {
+  final AttendanceController controller;
+  const _ActionButtons({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      color: Theme.of(context).colorScheme.surface,
+      child: Row(
+        children: [
+          // Filter Button
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: controller.toggleFilter,
+              icon: const Icon(Icons.filter_alt, size: 20, color: Colors.blue),
+              label: const Text('Filter', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                side: const BorderSide(color: Colors.blue),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+
+          // Generate PDF Button
+          Expanded(
+            child: Obx(() => ElevatedButton.icon(
+              onPressed: controller.isGeneratingPdf.value ? null : () => _generatePdf(context),
+              icon: controller.isGeneratingPdf.value
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Icon(Icons.picture_as_pdf, size: 20, color: Colors.white),
+              label: Text(
+                controller.isGeneratingPdf.value ? 'Generating...' : 'Generate PDF',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue[700],
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                disabledBackgroundColor: Colors.grey,
+              ),
+            )),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// PDF Generation Logic
+  Future<void> _generatePdf(BuildContext context) async {
+    if (controller.filteredRecords.isEmpty) {
+      Get.snackbar("Error", "No records found for this month.");
+      return;
+    }
+
+    controller.isGeneratingPdf.value = true;
+    try {
+      final pdf = pw.Document();
+      final records = controller.filteredRecords;
+      final info = controller.studentInfo;
+      final interBold = pw.Font.helveticaBold();
+      final interRegular = pw.Font.helvetica();
+      final merriweatherBold = pw.Font.timesBold();
+      final dancingScriptBold = pw.Font.timesBoldItalic();
+
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(32),
+          build: (context) => [
+            _buildPdfHeader( merriweatherBold, dancingScriptBold, interBold),
+            pw.SizedBox(height: 20),
+            _buildPdfTitle(),
+            pw.SizedBox(height: 20),
+            _buildPdfStudentInfo(info),
+            pw.SizedBox(height: 20),
+            _buildPdfSummary(controller),
+            pw.SizedBox(height: 20),
+            _buildPdfAttendanceTable(controller, records),
+          ],
+        ),
+      );
+
+      // Using layoutPdf for high reliability on Web and Mobile
+      await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async => pdf.save(),
+        name: 'Attendance_${info['name']}_${controller.selectedMonth.value}.pdf',
+      );
+
+    } catch (e) {
+      Get.snackbar("Error", "Failed to generate PDF: $e", backgroundColor: Colors.red, colorText: Colors.white);
+    } finally {
+      controller.isGeneratingPdf.value = false;
+    }
+  }
+
+  // --- PDF Component Builders ---
+
+ pw.Widget _buildPdfHeader(pw.Font titleFont, pw.Font subTitleFont, pw.Font boldFont) {
+  return pw.Center(child: pw.Padding(
+    padding: const pw.EdgeInsets.fromLTRB(0, 20, 0, 10), // Reduced side padding for better centering
+    child: pw.Column(
+      // This ensures all children in the column are centered horizontally
+      crossAxisAlignment: pw.CrossAxisAlignment.center,
+      mainAxisSize: pw.MainAxisSize.min,
+      children: [
+        pw.Text(
+          "BENCHMARK",
+          style: pw.TextStyle(
+            font: titleFont,
+            fontSize: 25,
+            color: const PdfColor.fromInt(0xFF1E3A8A),
+          ),
+        ),
+        pw.Text(
+          "School of Leadership",
+          style: pw.TextStyle(
+            font: subTitleFont,
+            fontSize: 22,
+            color: const PdfColor.fromInt(0xFF0284C7),
+          ),
+        ),
+        pw.SizedBox(height: 8),
+        pw.Container(
+          padding: const pw.EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          decoration: const pw.BoxDecoration(
+            color: PdfColor.fromInt(0xFF1E293B),
+            borderRadius: pw.BorderRadius.all(pw.Radius.circular(30)),
+          ),
+          child: pw.Text(
+            "PLAY GROUP TO MATRIC",
+            style: pw.TextStyle(
+              font: boldFont,
+              color: PdfColors.white,
+              fontSize: 16,
+            ),
+          ),
+        ),
+        pw.SizedBox(height: 20),
+      ],
+    ),
+  ),);
+}
+
+  pw.Widget _buildPdfTitle() {
+    return pw.Center(
+      child: pw.Column(
+        children: [
+          pw.Text('ATTENDANCE RECORD', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+          pw.Container(height: 1, width: 200, color: PdfColors.grey400),
+        ],
+      ),
+    );
+  }
+
+  pw.Widget _buildPdfStudentInfo(Map<String, String> info) {
+    return pw.Container(
+      padding: const pw.EdgeInsets.all(10),
+      decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.grey400), borderRadius: const pw.BorderRadius.all(pw.Radius.circular(5))),
+      child: pw.Column(
+        children: [
+          pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
+            pw.Text('Name: ${info['name']}'),
+          ]),
+          pw.SizedBox(height: 5), 
+        ],
+      ),
+    );
+  }
+
+  pw.Widget _buildPdfSummary(AttendanceController controller) {
+    return pw.Row(
+      children: [
+        pw.Expanded(child: pw.Text('Month: ${controller.selectedMonth.value} ${controller.selectedYear.value}')),
+        pw.Text('P: ${controller.presentCount} | A: ${controller.absentCount} | L: ${controller.leaveCount}'),
+      ],
+    );
+  }
+
+  pw.Widget _buildPdfAttendanceTable(AttendanceController controller, List records) {
+    return pw.TableHelper.fromTextArray(
+      headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+      headers: ['Sr #', 'Date', 'Status'],
+      data: List<List<dynamic>>.generate(
+        records.length,
+        (index) => [
+          index + 1,
+          records[index].date,
+          controller.normalizeStatus(records[index].status),
+        ],
+      ),
+    );
+  }
+}
+
+// --- Reusable UI Components (Simplified for brevity) ---
+
+class _StatCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final int count;
+  final Color color;
+  const _StatCard({required this.icon, required this.label, required this.count, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.2)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color),
+          const SizedBox(height: 8),
+          Text(label, style: const TextStyle(fontSize: 12)),
+          Text(count.toString(), style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color)),
+        ],
+      ),
+    );
+  }
+}
+
+class _RecordsList extends StatelessWidget {
+  final AttendanceController controller;
+  const _RecordsList({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final records = controller.filteredRecords;
+    if (records.isEmpty) return const Center(child: Text("No records found"));
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: records.length,
+      itemBuilder: (context, index) {
+        final r = records[index];
+        return ListTile(
+          title: Text(r.date),
+          trailing: Text(controller.normalizeStatus(r.status)),
+        );
+      },
+    );
+  }
+}
+
+class _ExpandableFilter extends StatelessWidget {
+  final AttendanceController controller;
+  const _ExpandableFilter({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() => controller.isFilterExpanded.value
+        ? Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                Expanded(child: DropdownButton<String>(
+                  value: controller.selectedMonth.value,
+                  items: AttendanceController.months.map((m) => DropdownMenuItem(value: m, child: Text(m))).toList(),
+                  onChanged: (v) => controller.setMonth(v!),
+                )),
+                const SizedBox(width: 10),
+                Expanded(child: DropdownButton<String>(
+                  value: controller.selectedYear.value,
+                  items: controller.availableYears.map((y) => DropdownMenuItem(value: y, child: Text(y))).toList(),
+                  onChanged: (v) => controller.setYear(v!),
+                )),
+              ],
+            ),
+          )
+        : const SizedBox.shrink());
+  }
+} */
+
+class AttendanceScreen extends StatelessWidget {
+  const AttendanceScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = Get.find<AttendanceController>();
+    // Get device dimensions
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    return Scaffold(
+      appBar: AppBar(title: const Text("Attendance"), centerTitle: true),
+      body: Obx(() {
+        if (controller.isLoading.value) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        return Center(
+          child: ConstrainedBox(
+            // Best practice: Limit width for larger screens (Tablets/Web)
+            constraints: const BoxConstraints(maxWidth: 800),
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  // Action Buttons (Filter + PDF) - Made responsive
+                  _ActionButtons(controller: controller),
+
+                  // Expandable Filter
+                  _ExpandableFilter(controller: controller),
+
+                  Padding(
+                    padding: EdgeInsets.all(screenWidth > 600 ? 30 : 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (controller.errorMessage.value.isNotEmpty)
+                          _buildErrorCard(context, controller.errorMessage.value),
+
+                        // Statistics Cards - Swaps to horizontal scroll or smaller sizing on tiny screens
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            return Row(
+                              children: [
+                                Expanded(
+                                  child: _StatCard(
+                                    icon: Icons.check_circle,
+                                    label: "Present",
+                                    count: controller.presentCount,
+                                    color: const Color(0xFF10B981),
+                                  ),
+                                ),
+                                SizedBox(width: constraints.maxWidth * 0.03),
+                                Expanded(
+                                  child: _StatCard(
+                                    icon: Icons.cancel,
+                                    label: "Absent",
+                                    count: controller.absentCount,
+                                    color: const Color(0xFFEF4444),
+                                  ),
+                                ),
+                                SizedBox(width: constraints.maxWidth * 0.03),
+                                Expanded(
+                                  child: _StatCard(
+                                    icon: Icons.event_busy,
+                                    label: "Late",
+                                    count: controller.leaveCount,
+                                    color: const Color(0xFFF59E0B),
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+
+                        const SizedBox(height: 32),
+
+                        // Daily Records Header
+                        Row(
+                          children: [
+                            Icon(Icons.history,
+                                color: Theme.of(context).colorScheme.primary),
+                            const SizedBox(width: 8),
+                            Text(
+                              "Daily Records",
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleLarge
+                                  ?.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 16),
+                        _RecordsList(controller: controller),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
+  Widget _buildErrorCard(BuildContext context, String message) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Card(
+        color: Colors.red.withOpacity(0.1),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              const Icon(Icons.info_outline, color: Colors.red),
+              const SizedBox(width: 12),
+              Expanded(
+                  child: Text(message,
+                      style: const TextStyle(color: Colors.red))),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// --- Action Buttons with Integrated PDF Logic ---
+class _ActionButtons extends StatelessWidget {
+  final AttendanceController controller;
+  const _ActionButtons({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      color: Theme.of(context).colorScheme.surface,
+      child: LayoutBuilder(builder: (context, constraints) {
+        // Switch to column for very narrow screens if necessary, 
+        // but for buttons, a responsive Row usually suffices.
+        return Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: controller.toggleFilter,
+                icon: const Icon(Icons.filter_alt, size: 20, color: Colors.blue),
+                label: const Text('Filter',
+                    style: TextStyle(
+                        color: Colors.blue, fontWeight: FontWeight.bold)),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  side: const BorderSide(color: Colors.blue),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Obx(() => ElevatedButton.icon(
+                    onPressed: controller.isGeneratingPdf.value
+                        ? null
+                        : () => _generatePdf(context),
+                    icon: controller.isGeneratingPdf.value
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white))
+                        : const Icon(Icons.picture_as_pdf,
+                            size: 20, color: Colors.white),
+                    label: Text(
+                      controller.isGeneratingPdf.value
+                          ? 'Generating...'
+                          : 'Generate PDF',
+                      style: const TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue[700],
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      disabledBackgroundColor: Colors.grey,
+                    ),
+                  )),
+            ),
+          ],
+        );
+      }),
+    );
+  }
+
+  /// PDF Generation Logic
+  Future<void> _generatePdf(BuildContext context) async {
+    if (controller.filteredRecords.isEmpty) {
+      Get.snackbar("Error", "No records found for this month.");
+      return;
+    }
+
+    controller.isGeneratingPdf.value = true;
+    try {
+      final pdf = pw.Document();
+      final records = controller.filteredRecords;
+      final info = controller.studentInfo;
+      final interBold = pw.Font.helveticaBold();
+      final merriweatherBold = pw.Font.timesBold();
+      final dancingScriptBold = pw.Font.timesBoldItalic();
+
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(32),
+          build: (context) => [
+            _buildPdfHeader(merriweatherBold, dancingScriptBold, interBold),
+            pw.SizedBox(height: 20),
+            _buildPdfTitle(),
+            pw.SizedBox(height: 20),
+            _buildPdfStudentInfo(info),
+            pw.SizedBox(height: 20),
+            _buildPdfSummary(controller),
+            pw.SizedBox(height: 20),
+            _buildPdfAttendanceTable(controller, records),
+          ],
+        ),
+      );
+
+      await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async => pdf.save(),
+        name:
+            'Attendance_${info['name']}_${controller.selectedMonth.value}.pdf',
+      );
+    } catch (e) {
+      Get.snackbar("Error", "Failed to generate PDF: $e",
+          backgroundColor: Colors.red, colorText: Colors.white);
+    } finally {
+      controller.isGeneratingPdf.value = false;
+    }
+  }
+
+  pw.Widget _buildPdfHeader(
+      pw.Font titleFont, pw.Font subTitleFont, pw.Font boldFont) {
+    return pw.Center(
+      child: pw.Padding(
+        padding: const pw.EdgeInsets.fromLTRB(0, 20, 0, 10),
+        child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.center,
+          mainAxisSize: pw.MainAxisSize.min,
+          children: [
+            pw.Text(
+              "BENCHMARK",
+              style: pw.TextStyle(
+                font: titleFont,
+                fontSize: 25,
+                color: const PdfColor.fromInt(0xFF1E3A8A),
+              ),
+            ),
+            pw.Text(
+              "School of Leadership",
+              style: pw.TextStyle(
+                font: subTitleFont,
+                fontSize: 22,
+                color: const PdfColor.fromInt(0xFF0284C7),
+              ),
+            ),
+            pw.SizedBox(height: 8),
+            pw.Container(
+              padding:
+                  const pw.EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              decoration: const pw.BoxDecoration(
+                color: PdfColor.fromInt(0xFF1E293B),
+                borderRadius: pw.BorderRadius.all(pw.Radius.circular(30)),
+              ),
+              child: pw.Text(
+                "PLAY GROUP TO MATRIC",
+                style: pw.TextStyle(
+                  font: boldFont,
+                  color: PdfColors.white,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+            pw.SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  pw.Widget _buildPdfTitle() {
+    return pw.Center(
+      child: pw.Column(
+        children: [
+          pw.Text('ATTENDANCE RECORD',
+              style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+          pw.Container(height: 1, width: 200, color: PdfColors.grey400),
+        ],
+      ),
+    );
+  }
+
+  pw.Widget _buildPdfStudentInfo(Map<String, String> info) {
+    return pw.Container(
+      padding: const pw.EdgeInsets.all(10),
+      decoration: pw.BoxDecoration(
+          border: pw.Border.all(color: PdfColors.grey400),
+          borderRadius: const pw.BorderRadius.all(pw.Radius.circular(5))),
+      child: pw.Column(
+        children: [
+          pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
+            pw.Text('Name: ${info['name']}'),
+          ]),
+          pw.SizedBox(height: 5),
+        ],
+      ),
+    );
+  }
+
+  pw.Widget _buildPdfSummary(AttendanceController controller) {
+    return pw.Row(
+      children: [
+        pw.Expanded(
+            child: pw.Text(
+                'Month: ${controller.selectedMonth.value} ${controller.selectedYear.value}')),
+        pw.Text(
+            'P: ${controller.presentCount} | A: ${controller.absentCount} | L: ${controller.leaveCount}'),
+      ],
+    );
+  }
+
+  pw.Widget _buildPdfAttendanceTable(
+      AttendanceController controller, List records) {
+    return pw.TableHelper.fromTextArray(
+      headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+      headers: ['Sr #', 'Date', 'Status'],
+      data: List<List<dynamic>>.generate(
+        records.length,
+        (index) => [
+          index + 1,
+          records[index].date,
+          controller.normalizeStatus(records[index].status),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final int count;
+  final Color color;
+  const _StatCard(
+      {required this.icon,
+      required this.label,
+      required this.count,
+      required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.2)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: screenWidth > 600 ? 32 : 24),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: TextStyle(fontSize: screenWidth > 600 ? 14 : 11),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            count.toString(),
+            style: TextStyle(
+                fontSize: screenWidth > 600 ? 22 : 18,
+                fontWeight: FontWeight.bold,
+                color: color),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RecordsList extends StatelessWidget {
+  final AttendanceController controller;
+  const _RecordsList({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final records = controller.filteredRecords;
+    if (records.isEmpty) return const Center(child: Text("No records found"));
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: records.length,
+      itemBuilder: (context, index) {
+        final r = records[index];
+        return Card(
+          elevation: 0.5,
+          margin: const EdgeInsets.only(bottom: 8),
+          child: ListTile(
+            title: Text(r.date, style: const TextStyle(fontWeight: FontWeight.w500)),
+            trailing: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                controller.normalizeStatus(r.status),
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ExpandableFilter extends StatelessWidget {
+  final AttendanceController controller;
+  const _ExpandableFilter({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() => controller.isFilterExpanded.value
+        ? Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Wrap( // Wrap is better for responsiveness than Row
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                SizedBox(
+                  width: (MediaQuery.of(context).size.width / 2) - 24,
+                  child: DropdownButtonFormField<String>(
+                    decoration: const InputDecoration(labelText: "Month", border: OutlineInputBorder()),
+                    value: controller.selectedMonth.value,
+                    items: AttendanceController.months
+                        .map((m) => DropdownMenuItem(value: m, child: Text(m)))
+                        .toList(),
+                    onChanged: (v) => controller.setMonth(v!),
+                  ),
+                ),
+                SizedBox(
+                  width: (MediaQuery.of(context).size.width / 2) - 24,
+                  child: DropdownButtonFormField<String>(
+                    decoration: const InputDecoration(labelText: "Year", border: OutlineInputBorder()),
+                    value: controller.selectedYear.value,
+                    items: controller.availableYears
+                        .map((y) => DropdownMenuItem(value: y, child: Text(y)))
+                        .toList(),
+                    onChanged: (v) => controller.setYear(v!),
+                  ),
+                ),
+              ],
+            ),
+          )
+        : const SizedBox.shrink());
   }
 }

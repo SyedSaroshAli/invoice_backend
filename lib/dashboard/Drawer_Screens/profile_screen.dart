@@ -1,4 +1,8 @@
-import 'package:flutter/material.dart';
+/* import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:school_management_system/authentication_screens/changePasswordScreen.dart';
+import 'package:school_management_system/authentication_screens/signin.dart';
+import 'package:school_management_system/controllers/admit_card_controller.dart';
 import 'package:school_management_system/services/auth_service.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -9,16 +13,25 @@ class ProfileScreen extends StatelessWidget {
     final userData = await auth.getUserData();
     final name = await auth.getStudentName() ?? 'Student';
     final id = await auth.getStudentId() ?? '';
+    final admitCardController = Get.put(AdmitCardController());
+    
+    // 2. Load the data (if not already loaded by onInit)
+    await admitCardController.loadAdmitCard();
+    
+    // 3. Extract the model
+    final studentData = admitCardController.admitCard.value;
 
     return {
       'name': name,
       'id': id,
-      'class': userData?['classDesc']?.toString() ?? '',
-      'section': userData?['section']?.toString() ?? '',
-      'email': userData?['email']?.toString() ?? '',
-      'phone': userData?['phone']?.toString() ?? '',
-      'fatherName': userData?['father_Name']?.toString() ?? '',
-      'rollNo': userData?['rollNo']?.toString() ?? id,
+      // Priority: AdmitCard API -> UserData (Backup) -> Empty String
+      'class': studentData?.className ?? userData?['classDesc']?.toString() ?? '',
+      'section': studentData?.section ?? userData?['section']?.toString() ?? '',
+      'fatherName': studentData?.fatherName ?? userData?['father_Name']?.toString() ?? '',
+      'rollNo': studentData?.rollNo != null 
+          ? studentData!.rollNo.toString() 
+          : (userData?['rollNo']?.toString() ?? id),
+  
     };
   }
 
@@ -27,25 +40,21 @@ class ProfileScreen extends StatelessWidget {
     return FutureBuilder<Map<String, String>>(
       future: _loadProfileData(),
       builder: (context, snapshot) {
-        final data =
-            snapshot.data ??
+        final data = snapshot.data ??
             {
               'name': 'Student',
-              'id': '',
-              'class': '',
-              'section': '',
-              'email': '',
-              'phone': '',
-              'fatherName': '',
-              'rollNo': '',
+          'id': '',
+          'class': '',
+          'section': '',
+          'fatherName': '',
+          'rollNo': '',
             };
 
         final studentName = data['name']!;
         final rollNumber = data['rollNo']!;
-        final class_ = data['class']!;
-        final section = data['section']!;
-        final studentEmail = data['email']!;
-        final phoneNumber = data['phone']!;
+        final fatherName = data['fatherName']!;
+        final className = data['class']!;
+        final sectionName = data['section']!;
 
         return Scaffold(
           body: CustomScrollView(
@@ -62,9 +71,10 @@ class ProfileScreen extends StatelessWidget {
                         end: Alignment.bottomRight,
                         colors: [
                           Theme.of(context).colorScheme.primary,
-                          Theme.of(
-                            context,
-                          ).colorScheme.primary.withValues(alpha: 0.7),
+                          Theme.of(context)
+                              .colorScheme
+                              .primary
+                              .withValues(alpha: 0.7),
                         ],
                       ),
                     ),
@@ -72,46 +82,32 @@ class ProfileScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const SizedBox(height: 40),
-                        Hero(
+                       /* Hero(
                           tag: 'profile_pic',
                           child: Container(
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.white.withValues(alpha: 0.3),
-                                  blurRadius: 20,
-                                  spreadRadius: 5,
-                                ),
-                              ],
-                            ),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: Colors.white,
-                                  width: 4,
-                                ),
+                              border: Border.all(
+                                color: Colors.white,
+                                width: 4,
                               ),
-                              child: CircleAvatar(
-                                radius: 50,
-                                backgroundColor: Colors.white,
-                                child: Text(
-                                  studentName.isNotEmpty
-                                      ? studentName[0].toUpperCase()
-                                      : "S",
-                                  style: TextStyle(
-                                    fontSize: 36,
-                                    fontWeight: FontWeight.bold,
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.primary,
-                                  ),
+                            ),
+                            child: CircleAvatar(
+                              radius: 50,
+                              backgroundColor: Colors.white,
+                              child: Text(
+                                studentName.isNotEmpty
+                                    ? studentName[0].toUpperCase()
+                                    : "S",
+                                style: TextStyle(
+                                  fontSize: 36,
+                                  fontWeight: FontWeight.bold,
+                                  color: Theme.of(context).colorScheme.primary,
                                 ),
                               ),
                             ),
                           ),
-                        ),
+                        ),*/
                       ],
                     ),
                   ),
@@ -136,26 +132,25 @@ class ProfileScreen extends StatelessWidget {
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 6),
-                            if (rollNumber.isNotEmpty)
+                            if (data['id']!.isNotEmpty)
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 16,
                                   vertical: 6,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.primary.withValues(alpha: 0.1),
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .primary
+                                      .withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Text(
-                                  'Roll No: $rollNumber',
+                                  'Student ID: ${data['id']}',
                                   style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.primary,
+                                    color: Theme.of(context).colorScheme.primary,
                                   ),
                                 ),
                               ),
@@ -163,67 +158,64 @@ class ProfileScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 32),
-                      Text(
-                        'Academic Information',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
+                      
+                      // First Row: Roll No & Father Name
                       Row(
                         children: [
                           Expanded(
                             child: _InfoCard(
-                              icon: Icons.school,
-                              label: 'Class',
-                              value: class_.isNotEmpty ? class_ : '—',
+                              icon: Icons.assignment_ind_outlined,
+                              label: 'Roll Number',
+                              value: rollNumber.isNotEmpty ? rollNumber : '—',
                               color: Colors.blue,
                             ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: _InfoCard(
-                              icon: Icons.group,
-                              label: 'Section',
-                              value: section.isNotEmpty ? section : '—',
+                              icon: Icons.person_outline,
+                              label: 'Father Name',
+                              value: fatherName.isNotEmpty ? fatherName : '—',
                               color: Colors.green,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 32),
-                      Text(
-                        'Contact Information',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      _ContactTile(
-                        icon: Icons.email_outlined,
-                        title: 'Email Address',
-                        subtitle: studentEmail.isNotEmpty ? studentEmail : '—',
-                        color: Colors.orange,
-                      ),
                       const SizedBox(height: 12),
-                      _ContactTile(
-                        icon: Icons.phone_outlined,
-                        title: 'Phone Number',
-                        subtitle: phoneNumber.isNotEmpty ? phoneNumber : '—',
-                        color: Colors.purple,
+
+                      // Second Row: Class & Section (Updated to match alignment)
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _InfoCard(
+                              icon: Icons.class_outlined,
+                              label: 'Class',
+                              value: className.isNotEmpty ? className : '—',
+                              color: Colors.orange,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _InfoCard(
+                              icon: Icons.layers_outlined,
+                              label: 'Section',
+                              value: sectionName.isNotEmpty ? sectionName : '—',
+                              color: Colors.purple,
+                            ),
+                          ),
+                        ],
                       ),
+                      
                       const SizedBox(height: 32),
+                      
+                      // Action Buttons
                       SizedBox(
                         width: double.infinity,
                         child: FilledButton.icon(
                           onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Change Password clicked'),
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) =>  ChangePasswordScreen(),
                               ),
                             );
                           },
@@ -236,10 +228,7 @@ class ProfileScreen extends StatelessWidget {
                             ),
                           ),
                           style: FilledButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 18,
-                              horizontal: 20,
-                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 18),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
                             ),
@@ -253,9 +242,12 @@ class ProfileScreen extends StatelessWidget {
                           onPressed: () async {
                             await AuthService().logout();
                             if (context.mounted) {
-                              Navigator.of(
-                                context,
-                              ).popUntil((route) => route.isFirst);
+                              Navigator.of(context).pushAndRemoveUntil(
+                                MaterialPageRoute(
+                                  builder: (context) => const SigninScreen(),
+                                ),
+                                (route) => false,
+                              );
                             }
                           },
                           icon: const Icon(Icons.logout, size: 22),
@@ -267,20 +259,16 @@ class ProfileScreen extends StatelessWidget {
                             ),
                           ),
                           style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 18,
-                              horizontal: 20,
-                            ),
-                            foregroundColor: Theme.of(
-                              context,
-                            ).colorScheme.error,
+                            padding: const EdgeInsets.symmetric(vertical: 18),
+                            foregroundColor: Theme.of(context).colorScheme.error,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
                             ),
                             side: BorderSide(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.error.withValues(alpha: 0.5),
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .error
+                                  .withValues(alpha: 0.5),
                             ),
                           ),
                         ),
@@ -298,7 +286,6 @@ class ProfileScreen extends StatelessWidget {
   }
 }
 
-/// Reusable info card widget
 class _InfoCard extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -315,90 +302,332 @@ class _InfoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Colors.grey.withValues(alpha: 0.1)),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         child: Column(
           children: [
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
+                shape: BoxShape.circle,
               ),
-              child: Icon(icon, color: color, size: 28),
+              child: Icon(icon, color: color, size: 24),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Text(
               label,
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w500),
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w500,
+              ),
             ),
             const SizedBox(height: 4),
             Text(
               value,
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
               textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
       ),
     );
   }
+} */
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:school_management_system/authentication_screens/changePasswordScreen.dart';
+import 'package:school_management_system/authentication_screens/signin.dart';
+import 'package:school_management_system/controllers/admit_card_controller.dart';
+import 'package:school_management_system/services/auth_service.dart';
+
+class ProfileScreen extends StatelessWidget {
+  const ProfileScreen({super.key});
+
+  Future<Map<String, String>> _loadProfileData() async {
+    final auth = AuthService();
+    final userData = await auth.getUserData();
+    final name = await auth.getStudentName() ?? 'Student';
+    final id = await auth.getStudentId() ?? '';
+    final admitCardController = Get.put(AdmitCardController());
+    
+    // Load the data from API
+    await admitCardController.loadAdmitCard();
+    
+    final studentData = admitCardController.admitCard.value;
+
+    return {
+      'name': name,
+      'id': id,
+      'class': studentData?.className ?? userData?['classDesc']?.toString() ?? '',
+      'section': studentData?.section ?? userData?['section']?.toString() ?? '',
+      'fatherName': studentData?.fatherName ?? userData?['father_Name']?.toString() ?? '',
+      'rollNo': studentData?.rollNo != null 
+          ? studentData!.rollNo.toString() 
+          : (userData?['rollNo']?.toString() ?? id),
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    return FutureBuilder<Map<String, String>>(
+      future: _loadProfileData(),
+      builder: (context, snapshot) {
+        // 1. Handle Loading State (Prevents showing "Student" while fetching)
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+
+        // 2. Handle Error State
+        if (snapshot.hasError) {
+          return Scaffold(
+            body: Center(
+              child: Text("Error: ${snapshot.error}"),
+            ),
+          );
+        }
+
+        // 3. Data is ready
+        final data = snapshot.data ?? {};
+        final studentName = data['name'] ?? 'Student';
+        final rollNumber = data['rollNo'] ?? '';
+        final fatherName = data['fatherName'] ?? '';
+        final className = data['class'] ?? '';
+        final sectionName = data['section'] ?? '';
+
+        return Scaffold(
+          body: LayoutBuilder(
+            builder: (context, constraints) {
+              return CustomScrollView(
+                physics: const BouncingScrollPhysics(),
+                slivers: [
+                  SliverAppBar(
+                    expandedHeight: (screenHeight * 0.22).clamp(160.0, 220.0),
+                    floating: false,
+                    pinned: true,
+                    flexibleSpace: FlexibleSpaceBar(
+                      background: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Theme.of(context).colorScheme.primary,
+                              Theme.of(context).colorScheme.primary.withOpacity(0.7),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  SliverToBoxAdapter(
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 600),
+                        child: Padding(
+                          padding: EdgeInsets.all(screenWidth * 0.05),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Center(
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      studentName,
+                                      style: TextStyle(
+                                        fontSize: (screenWidth * 0.07).clamp(22.0, 30.0),
+                                        fontWeight: FontWeight.bold,
+                                        color: Theme.of(context).colorScheme.onSurface,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    if (data['id'] != null && data['id']!.isNotEmpty)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                                        decoration: BoxDecoration(
+                                          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(20),
+                                        ),
+                                        child: Text(
+                                          'Student ID: ${data['id']}',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: Theme.of(context).colorScheme.primary,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 32),
+                              
+                              // Responsive Info Cards
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _InfoCard(
+                                      icon: Icons.assignment_ind_outlined,
+                                      label: 'Roll Number',
+                                      value: rollNumber.isNotEmpty ? rollNumber : '—',
+                                      color: Colors.blue,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: _InfoCard(
+                                      icon: Icons.person_outline,
+                                      label: 'Father Name',
+                                      value: fatherName.isNotEmpty ? fatherName : '—',
+                                      color: Colors.green,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _InfoCard(
+                                      icon: Icons.class_outlined,
+                                      label: 'Class',
+                                      value: className.isNotEmpty ? className : '—',
+                                      color: Colors.orange,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: _InfoCard(
+                                      icon: Icons.layers_outlined,
+                                      label: 'Section',
+                                      value: sectionName.isNotEmpty ? sectionName : '—',
+                                      color: Colors.purple,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 32),
+                              
+                              // Action Buttons
+                              SizedBox(
+                                width: double.infinity,
+                                child: FilledButton.icon(
+                                  onPressed: () {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(builder: (context) => ChangePasswordScreen()),
+                                    );
+                                  },
+                                  icon: const Icon(Icons.lock_reset, size: 22),
+                                  label: const Text('Change Password'),
+                                  style: FilledButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(vertical: 18),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  onPressed: () async {
+                                    await AuthService().logout();
+                                    if (context.mounted) {
+                                      Navigator.of(context).pushAndRemoveUntil(
+                                        MaterialPageRoute(builder: (context) => const SigninScreen()),
+                                        (route) => false,
+                                      );
+                                    }
+                                  },
+                                  icon: const Icon(Icons.logout, size: 22),
+                                  label: const Text('Sign Out'),
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(vertical: 18),
+                                    foregroundColor: Theme.of(context).colorScheme.error,
+                                    side: BorderSide(color: Theme.of(context).colorScheme.error.withOpacity(0.5)),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
 }
 
-/// Reusable contact tile widget
-class _ContactTile extends StatelessWidget {
+class _InfoCard extends StatelessWidget {
   final IconData icon;
-  final String title;
-  final String subtitle;
+  final String label;
+  final String value;
   final Color color;
 
-  const _ContactTile({
+  const _InfoCard({
     required this.icon,
-    required this.title,
-    required this.subtitle,
+    required this.label,
+    required this.value,
     required this.color,
   });
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      margin: EdgeInsets.zero,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Colors.grey.withOpacity(0.1)),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 8),
+        child: Column(
           children: [
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
+                color: color.withOpacity(0.1),
+                shape: BoxShape.circle,
               ),
               child: Icon(icon, color: color, size: 24),
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
+            const SizedBox(height: 10),
+            Text(
+              label,
+              style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),

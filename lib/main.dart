@@ -19,6 +19,7 @@ void main() {
   // Data controllers registered lazily — they should NOT auto-fetch on init
   // They will fetch data when the user navigates to them (after login)
   Get.lazyPut(() => AdmitCardController());
+  Get.lazyPut(() => AdmitCardController());
   Get.lazyPut(() => AttendanceController());
   Get.lazyPut(() => CompositeMarksheetController());
   Get.lazyPut(() => MarksheetController());

@@ -29,7 +29,7 @@ class AdmitCardController extends GetxController {
     try {
       final studentId = await _auth.getStudentId();
       if (studentId == null || studentId.isEmpty) {
-        errorMessage.value = 'Student ID not found. Please login again.';
+        errorMessage.value = 'Student ID not found.';
         isLoading.value = false;
         return;
       }
@@ -59,7 +59,7 @@ class AdmitCardController extends GetxController {
     } on ApiException catch (e) {
       errorMessage.value = e.message;
     } catch (e) {
-      errorMessage.value = 'Failed to load admit card: ${e.toString()}';
+      errorMessage.value = 'Failed to load admit card.';
     } finally {
       isLoading.value = false;
     }

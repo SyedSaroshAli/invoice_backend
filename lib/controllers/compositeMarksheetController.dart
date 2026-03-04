@@ -41,7 +41,7 @@ class CompositeMarksheetController extends GetxController {
 
       final studentId = await _auth.getStudentId();
       if (studentId == null || studentId.isEmpty) {
-        errorMessage.value = 'Student ID not found. Please login again.';
+        errorMessage.value = 'Student ID not found.';
         return;
       }
 

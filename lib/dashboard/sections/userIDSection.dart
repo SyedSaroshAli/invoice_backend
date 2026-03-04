@@ -26,7 +26,7 @@ class UserIDSection extends StatelessWidget {
             child: Row(
               children: [
                 // Profile Avatar
-                Container(
+               /* Container(
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
@@ -57,7 +57,7 @@ class UserIDSection extends StatelessWidget {
                       ),
                     ),
                   ),
-                ),
+                ),*/
 
                 const SizedBox(width: 24),
 
@@ -67,6 +67,7 @@ class UserIDSection extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
+                      /*
                       Text(
                         "Welcome Back 👋",
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -74,7 +75,7 @@ class UserIDSection extends StatelessWidget {
                           fontWeight: FontWeight.w600,
                           letterSpacing: 0.5,
                         ),
-                      ),
+                      ),*/
                       const SizedBox(height: 4),
                       Text(
                         studentName,

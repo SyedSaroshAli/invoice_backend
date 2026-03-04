@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:school_management_system/controllers/noticeController.dart';
+import 'package:school_management_system/dashboard/Drawer_Screens/NoticesScreen.dart';
 
 class NoticesSection extends StatelessWidget {
   const NoticesSection({super.key});
@@ -35,7 +36,12 @@ class NoticesSection extends StatelessWidget {
                   context,
                 ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
-              TextButton(onPressed: () {}, child: const Text('View All')),
+              TextButton(onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => NoticesScreen()),
+                );
+              }, child: const Text('View All')),
             ],
           ),
         ),
@@ -70,8 +76,8 @@ class NoticesSection extends StatelessWidget {
             return ListView.builder(
               scrollDirection: Axis.horizontal,
               physics: const BouncingScrollPhysics(),
-              itemCount: noticesController.notices.length > 6
-                  ? 6
+              itemCount: noticesController.notices.length > 3
+                  ? 3
                   : noticesController.notices.length,
               itemBuilder: (context, index) {
                 final notice = noticesController.notices[index];

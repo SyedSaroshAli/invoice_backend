@@ -36,6 +36,8 @@ class AuthService {
   final ApiService _api = ApiService();
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
+  static get to => null;
+
   // ─── Login ───────────────────────────────────────────────
 
   /// Authenticate user with the API.
