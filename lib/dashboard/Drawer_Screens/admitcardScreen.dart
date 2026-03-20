@@ -699,6 +699,8 @@ import 'package:printing/printing.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:school_management_system/controllers/admit_card_controller.dart';
 import 'package:school_management_system/models/admitcardModel.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 
 class AdmitCardScreen extends StatelessWidget {
   const AdmitCardScreen({super.key});
@@ -760,7 +762,7 @@ class AdmitCardScreen extends StatelessWidget {
   Widget _buildAdmitCardUI(AdmitCardModel data) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.grey[200],
+        color: Colors.white,
         border: Border.all(color: Colors.black, width: 2),
       ),
       padding: const EdgeInsets.only(bottom: 20),
@@ -771,7 +773,7 @@ class AdmitCardScreen extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: _buildTable(data),
           ),
-          const SizedBox(height: 40),
+          const SizedBox(height: 33),
           _buildSignatures(),
         ],
       ),
@@ -874,20 +876,24 @@ class AdmitCardScreen extends StatelessWidget {
                   child: Column(
                     children: [
                       _gridRow([
-                        _gridCell(6, "Student's Name", isBold: true),
-                        _gridCell(12, data.studentName, isCenter: true, borderRight: false),
+                        _gridCell(5, "Student's Name", isBold: true),
+                        _gridCell(5, data.studentName, isCenter: true, borderRight: true),
+                        _gridCell(5, "Father's Name", isBold: true),
+                        _gridCell(5, data.fatherName, isCenter: true, borderRight: false),
                       ]),
-                      _gridRow([
+                     /* _gridRow([
                         _gridCell(6, "Father's Name", isBold: true),
                         _gridCell(12, data.fatherName, isCenter: true, borderRight: false),
-                      ]),
+                      ]), */
                       _gridRow([
-                        _gridCell(6, "Class", isBold: true),
-                        _gridCell(6, data.classId.toString(), isCenter: true),
-                        _gridCell(3, "Section", isBold: true),
-                        _gridCell(3, data.section, isCenter: true, borderRight: false),
-                      ], borderBottom: false),
-                    ],
+                        _gridCell(5, "Class", isBold: true),
+                        _gridCell(5, data.classId.toString(), isCenter: true),
+                        _gridCell(5, "Section", isBold: true),
+                        _gridCell(5, data.section, isCenter: true, borderRight: false),
+                         /* _gridCell(5, "Seat No.", isBold: true),
+                _gridCell(3, data.seatNo.toString(), isCenter: true, borderRight: false),
+*/ ], borderBottom: false,
+                  )],
                   ),
                 ),
                 Expanded(
@@ -903,9 +909,9 @@ class AdmitCardScreen extends StatelessWidget {
                               data.photoUrl!,
                               fit: BoxFit.cover,
                               errorBuilder: (context, error, stackTrace) =>
-                                  const Icon(Icons.person, size: 40, color: Colors.grey),
+                                  const Icon(Icons.person, size: 32.5, color: Colors.grey),
                             )
-                          : const Icon(Icons.person, size: 40, color: Colors.grey),
+                          : const Icon(Icons.person, size: 32.5, color: Colors.grey),
                     ),
                   ),
                 ),
@@ -917,12 +923,12 @@ class AdmitCardScreen extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _gridCell(7, "Class Desc", isBold: true),
-                _gridCell(6, data.className, isCenter: true),
-                _gridCell(4, "G.R No.", isBold: true),
+                _gridCell(5, "Class Desc", isBold: true),
+                _gridCell(5, data.className, isCenter: true),
+                _gridCell(5, "G.R No.", isBold: true),
                 _gridCell(4, data.grNo, isCenter: true),
-                _gridCell(3, "Seat No.", isBold: true),
-                _gridCell(3, data.seatNo.toString(), isCenter: true, borderRight: false),
+                _gridCell(4, "Seat No.", isBold: true),
+                _gridCell(2, data.seatNo.toString(), isCenter: true, borderRight: false),
               ],
             ),
           ),
@@ -970,7 +976,7 @@ class AdmitCardScreen extends StatelessWidget {
 
   Widget _buildSignatures() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 40),
+      padding: const EdgeInsets.symmetric(horizontal: 35),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -1028,7 +1034,7 @@ class AdmitCardScreen extends StatelessWidget {
           build: (pw.Context context) {
             return pw.Container(
               decoration: pw.BoxDecoration(
-                color: PdfColors.grey200,
+                color: PdfColors.white,
                 border: pw.Border.all(color: PdfColors.black, width: 2),
               ),
               padding: const pw.EdgeInsets.only(bottom: 20),
@@ -1108,21 +1114,27 @@ class AdmitCardScreen extends StatelessWidget {
                 flex: 18,
                 child: pw.Column(
                   children: [
-                    _pdfGridRow([_pdfGridCell(6, "Student's Name", boldFont, isBold: true), _pdfGridCell(12, data.studentName, boldFont, isCenter: true, borderRight: false)]),
-                    _pdfGridRow([_pdfGridCell(6, "Father's Name", boldFont, isBold: true), _pdfGridCell(12, data.fatherName, boldFont, isCenter: true, borderRight: false)]),
+                    _pdfGridRow([_pdfGridCell(5, "Student's Name", boldFont, isBold: true), 
+                    _pdfGridCell(5, data.studentName, boldFont, isCenter: true, borderRight: true),
+                    _pdfGridCell(5, "Father's Name", boldFont, isBold: true), 
+                    _pdfGridCell(5, data.fatherName, boldFont, isCenter: true, borderRight: false)]),
+                    /*
+                    _pdfGridRow([_pdfGridCell(5, "Father's Name", boldFont, isBold: true), 
+                    _pdfGridCell(5, data.fatherName, boldFont, isCenter: true, borderRight: false)]),*/
+
                     _pdfGridRow([
-                      _pdfGridCell(6, "Class", boldFont, isBold: true), 
-                      _pdfGridCell(6, data.classId.toString(), boldFont, isCenter: true), 
-                      _pdfGridCell(3, "Section", boldFont, isBold: true), 
-                      _pdfGridCell(3, data.section, boldFont, isCenter: true, borderRight: false)
+                      _pdfGridCell(5, "Class", boldFont, isBold: true), 
+                      _pdfGridCell(5, data.classId.toString(), boldFont, isCenter: true), 
+                      _pdfGridCell(5, "Section", boldFont, isBold: true), 
+                      _pdfGridCell(5, data.section, boldFont, isCenter: true, borderRight: false)
                     ], borderBottom: false),
                   ],
                 ),
               ),
               pw.Expanded(
-                flex: 4,
+                flex: 3,
                 child: pw.Container(
-                  height: 93,
+                  height: 69,
                   decoration: const pw.BoxDecoration(border: pw.Border(left: pw.BorderSide(color: PdfColors.black, width: 1))),
                   padding: const pw.EdgeInsets.all(6),
                   child: pw.Center(
@@ -1135,12 +1147,12 @@ class AdmitCardScreen extends StatelessWidget {
           pw.Container(height: 1, color: PdfColors.black),
           pw.Row(
             children: [
-              _pdfGridCell(7, "Class Desc", boldFont, isBold: true), 
+              _pdfGridCell(6, "Class Desc", boldFont, isBold: true), 
               _pdfGridCell(6, data.className, boldFont, isCenter: true),
-              _pdfGridCell(4, "G.R No.", boldFont, isBold: true),
+              _pdfGridCell(5, "G.R No.", boldFont, isBold: true),
               _pdfGridCell(4, data.grNo, boldFont, isCenter: true),
-              _pdfGridCell(3, "Seat No.", boldFont, isBold: true),
-              _pdfGridCell(3, data.seatNo.toString(), boldFont, isCenter: true, borderRight: false),
+              _pdfGridCell(4, "Seat No.", boldFont, isBold: true),
+              _pdfGridCell(2, data.seatNo.toString(), boldFont, isCenter: true, borderRight: false),
             ],
           ),
         ],

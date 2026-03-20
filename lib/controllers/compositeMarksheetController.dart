@@ -7,6 +7,8 @@ import 'package:printing/printing.dart';
 import 'package:school_management_system/models/compositeMarksheetModel.dart';
 import 'package:school_management_system/services/api_service.dart';
 import 'package:school_management_system/services/auth_service.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 
 class CompositeMarksheetController extends GetxController {
   // Observable variables

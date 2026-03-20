@@ -39,7 +39,7 @@ class SplashScreen extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Image.asset(
-                  'assets/benchmark-logo.jpeg',
+                  'assets/KI_Logo_Transparent.png',
                   width: 120,
                   height: 120,
                 ),

@@ -3,9 +3,14 @@ import 'package:get/get.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter/services.dart' show NetworkAssetBundle, rootBundle;
+import 'dart:io';
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:path_provider/path_provider.dart';
+//import 'package:google_fonts/google_fonts.dart';
+//import 'package:flutter/services.dart' show NetworkAssetBundle, rootBundle;
 import 'package:school_management_system/controllers/attendance_controller.dart';
+import 'package:permission_handler/permission_handler.dart';
+
 /*
 class AttendanceScreen extends StatelessWidget {
   const AttendanceScreen({super.key});
@@ -270,19 +275,45 @@ class _ActionButtons extends StatelessWidget {
         ),
       );
 
-      await Printing.sharePdf(
-        bytes: await pdf.save(),
-        filename:
-            'Attendance_${info['name'] ?? 'Student'}_${controller.selectedMonth.value}.pdf',
-      );
+      // Save to Downloads/KI Software Solutions
+      if (Platform.isAndroid) {
+        final status = await Permission.storage.request();
+        if (!status.isGranted) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Storage permission required'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
+        }
+      }
 
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('PDF generated successfully'),
-            backgroundColor: Colors.green,
-          ),
-        );
+      const String folderName = 'KI Software Solutions';
+      final Directory saveDir = Directory('/storage/emulated/0/Download/$folderName');
+      if (!await saveDir.exists()) {
+        await saveDir.create(recursive: true);
+      }
+
+      final String rawName = 'Attendance_\${info['name'] ?? 'Student'}_\${controller.selectedMonth.value}.pdf';
+      final String safeFileName = rawName.replaceAll(RegExp(r'[\\\\/:*?\"<>| ]'), '_');
+      final File output = File('\${saveDir.path}/\$safeFileName');
+      final Uint8List bytes = await pdf.save();
+      await output.writeAsBytes(bytes);
+
+      if (await output.exists()) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('PDF saved to Downloads/$folderName/\$safeFileName'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        throw Exception('File save failed');
       }
     } catch (e) {
       if (context.mounted) {
@@ -1443,6 +1474,7 @@ class _ExpandableFilter extends StatelessWidget {
   }
 } */
 
+/*
 class AttendanceScreen extends StatelessWidget {
   const AttendanceScreen({super.key});
 
@@ -1911,5 +1943,2187 @@ class _ExpandableFilter extends StatelessWidget {
             ),
           )
         : const SizedBox.shrink());
+  }
+}  */
+/*
+class AttendanceScreen extends StatelessWidget {
+  const AttendanceScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = Get.find<AttendanceController>();
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    return Scaffold(
+      appBar: AppBar(title: const Text("Attendance"), centerTitle: true),
+      body: Obx(() {
+        if (controller.isLoading.value) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        return Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 800),
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: EdgeInsets.all(screenWidth > 600 ? 30 : 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _ActionButtons(controller: controller),
+                    _ExpandableFilter(controller: controller),
+                    const SizedBox(height: 16),
+
+                    if (controller.errorMessage.value.isNotEmpty)
+                      _buildErrorCard(context, controller.errorMessage.value),
+
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        return Row(
+                          children: [
+                            Expanded(
+                              child: _StatCard(
+                                icon: Icons.check_circle,
+                                label: "Present",
+                                count: controller.presentCount,
+                                color: const Color(0xFF10B981),
+                              ),
+                            ),
+                            SizedBox(width: constraints.maxWidth * 0.03),
+                            Expanded(
+                              child: _StatCard(
+                                icon: Icons.cancel,
+                                label: "Absent",
+                                count: controller.absentCount,
+                                color: const Color(0xFFEF4444),
+                              ),
+                            ),
+                            SizedBox(width: constraints.maxWidth * 0.03),
+                            Expanded(
+                              child: _StatCard(
+                                icon: Icons.event_busy,
+                                label: "Late",
+                                count: controller.leaveCount,
+                                color: const Color(0xFFF59E0B),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    Row(
+                      children: [
+                        Icon(Icons.history,
+                            color: Theme.of(context).colorScheme.primary),
+                        const SizedBox(width: 8),
+                        Text(
+                          "Daily Records",
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleLarge
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 16),
+                    _RecordsList(controller: controller),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
+  Widget _buildErrorCard(BuildContext context, String message) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Card(
+        color: Colors.red.withOpacity(0.1),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              const Icon(Icons.info_outline, color: Colors.red),
+              const SizedBox(width: 12),
+              Expanded(
+                  child: Text(message,
+                      style: const TextStyle(color: Colors.red))),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionButtons extends StatelessWidget {
+  final AttendanceController controller;
+  const _ActionButtons({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, constraints) {
+      return Row(
+        children: [
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: controller.toggleFilter,
+              icon: const Icon(Icons.filter_alt, size: 20, color: Colors.blue),
+              label: const Text('Filter',
+                  style: TextStyle(
+                      color: Colors.blue, fontWeight: FontWeight.bold)),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                side: const BorderSide(color: Colors.blue),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Obx(() => ElevatedButton.icon(
+                  onPressed: controller.isGeneratingPdf.value
+                      ? null
+                      : () => _generatePdf(context),
+                  icon: controller.isGeneratingPdf.value
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white))
+                      : const Icon(Icons.picture_as_pdf,
+                          size: 20, color: Colors.white),
+                  label: Text(
+                    controller.isGeneratingPdf.value
+                        ? 'Generating...'
+                        : 'Generate PDF',
+                    style: const TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue[700],
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    disabledBackgroundColor: Colors.grey,
+                  ),
+                )),
+          ),
+        ],
+      );
+    });
+  }
+
+  Future<void> _generatePdf(BuildContext context) async {
+    if (controller.filteredRecords.isEmpty) {
+      Get.snackbar("Error", "No records found for this month.");
+      return;
+    }
+
+    controller.isGeneratingPdf.value = true;
+    try {
+      final pdf = pw.Document();
+      final records = controller.filteredRecords;
+      final info = controller.studentInfo;
+      final interBold = pw.Font.helveticaBold();
+      final merriweatherBold = pw.Font.timesBold();
+      final dancingScriptBold = pw.Font.timesBoldItalic();
+
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(32),
+          build: (context) => [
+            _buildPdfHeader(merriweatherBold, dancingScriptBold, interBold),
+            pw.SizedBox(height: 20),
+            _buildPdfTitle(),
+            pw.SizedBox(height: 20),
+            _buildPdfStudentInfo(info),
+            pw.SizedBox(height: 20),
+            _buildPdfSummary(controller),
+            pw.SizedBox(height: 20),
+            _buildPdfAttendanceTable(controller, records),
+          ],
+        ),
+      );
+
+      await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async => pdf.save(),
+        name:
+            'Attendance_${info['name']}_${controller.selectedMonth.value}.pdf',
+      );
+    } catch (e) {
+      Get.snackbar("Error", "Failed to generate PDF: $e",
+          backgroundColor: Colors.red, colorText: Colors.white);
+    } finally {
+      controller.isGeneratingPdf.value = false;
+    }
+  }
+
+  pw.Widget _buildPdfHeader(
+      pw.Font titleFont, pw.Font subTitleFont, pw.Font boldFont) {
+    return pw.Center(
+      child: pw.Padding(
+        padding: const pw.EdgeInsets.fromLTRB(0, 20, 0, 10),
+        child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.center,
+          mainAxisSize: pw.MainAxisSize.min,
+          children: [
+            pw.Text(
+              "BENCHMARK",
+              style: pw.TextStyle(
+                font: titleFont,
+                fontSize: 25,
+                color: const PdfColor.fromInt(0xFF1E3A8A),
+              ),
+            ),
+            pw.Text(
+              "School of Leadership",
+              style: pw.TextStyle(
+                font: subTitleFont,
+                fontSize: 22,
+                color: const PdfColor.fromInt(0xFF0284C7),
+              ),
+            ),
+            pw.SizedBox(height: 8),
+            pw.Container(
+              padding:
+                  const pw.EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              decoration: const pw.BoxDecoration(
+                color: PdfColor.fromInt(0xFF1E293B),
+                borderRadius: pw.BorderRadius.all(pw.Radius.circular(30)),
+              ),
+              child: pw.Text(
+                "PLAY GROUP TO MATRIC",
+                style: pw.TextStyle(
+                  font: boldFont,
+                  color: PdfColors.white,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+            pw.SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  pw.Widget _buildPdfTitle() {
+    return pw.Center(
+      child: pw.Column(
+        children: [
+          pw.Text('ATTENDANCE RECORD',
+              style:
+                  pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+          pw.Container(height: 1, width: 200, color: PdfColors.grey400),
+        ],
+      ),
+    );
+  }
+
+  pw.Widget _buildPdfStudentInfo(Map<String, String> info) {
+    return pw.Container(
+      padding: const pw.EdgeInsets.all(10),
+      decoration: pw.BoxDecoration(
+          border: pw.Border.all(color: PdfColors.grey400),
+          borderRadius: const pw.BorderRadius.all(pw.Radius.circular(5))),
+      child: pw.Column(
+        children: [
+          pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [pw.Text('Name: ${info['name']}')]),
+          pw.SizedBox(height: 5),
+        ],
+      ),
+    );
+  }
+
+  pw.Widget _buildPdfSummary(AttendanceController controller) {
+    return pw.Row(
+      children: [
+        pw.Expanded(
+            child: pw.Text(
+                'Month: ${controller.selectedMonth.value} ${controller.selectedYear.value}')),
+        pw.Text(
+            'P: ${controller.presentCount} | A: ${controller.absentCount} | L: ${controller.leaveCount}'),
+      ],
+    );
+  }
+
+  pw.Widget _buildPdfAttendanceTable(
+      AttendanceController controller, List records) {
+    return pw.TableHelper.fromTextArray(
+      headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+      headers: ['Sr #', 'Date', 'Status'],
+      data: List<List<dynamic>>.generate(
+        records.length,
+        (index) => [
+          index + 1,
+          records[index].date,
+          controller.normalizeStatus(records[index].status),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final int count;
+  final Color color;
+  const _StatCard(
+      {required this.icon,
+      required this.label,
+      required this.count,
+      required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.2)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: screenWidth > 600 ? 32 : 24),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: TextStyle(fontSize: screenWidth > 600 ? 14 : 11),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            count.toString(),
+            style: TextStyle(
+                fontSize: screenWidth > 600 ? 22 : 18,
+                fontWeight: FontWeight.bold,
+                color: color),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RecordsList extends StatelessWidget {
+  final AttendanceController controller;
+  const _RecordsList({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final records = controller.filteredRecords;
+    if (records.isEmpty) return const Center(child: Text("No records found"));
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: records.length,
+      itemBuilder: (context, index) {
+        final r = records[index];
+        return Card(
+          elevation: 0.5,
+          margin: const EdgeInsets.only(bottom: 8),
+          child: ListTile(
+            title: Text(r.date,
+                style: const TextStyle(fontWeight: FontWeight.w500)),
+            trailing: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                controller.normalizeStatus(r.status),
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ✅ ONLY FIX: early return eliminates the blank space when collapsed
+class _ExpandableFilter extends StatelessWidget {
+  final AttendanceController controller;
+  const _ExpandableFilter({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      // ✅ Early return = zero height, zero space when collapsed
+      if (!controller.isFilterExpanded.value) return const SizedBox.shrink();
+
+      return Padding(
+        padding: const EdgeInsets.only(top: 12),
+        child: Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            SizedBox(
+              width: (MediaQuery.of(context).size.width / 2) - 24,
+              child: DropdownButtonFormField<String>(
+                decoration: const InputDecoration(
+                    labelText: "Month", border: OutlineInputBorder()),
+                value: controller.selectedMonth.value,
+                items: AttendanceController.months
+                    .map((m) => DropdownMenuItem(value: m, child: Text(m)))
+                    .toList(),
+                onChanged: (v) => controller.setMonth(v!),
+              ),
+            ),
+            SizedBox(
+              width: (MediaQuery.of(context).size.width / 2) - 24,
+              child: DropdownButtonFormField<String>(
+                decoration: const InputDecoration(
+                    labelText: "Year", border: OutlineInputBorder()),
+                value: controller.selectedYear.value,
+                items: controller.availableYears
+                    .map((y) => DropdownMenuItem(value: y, child: Text(y)))
+                    .toList(),
+                onChanged: (v) => controller.setYear(v!),
+              ),
+            ),
+          ],
+        ),
+      );
+    });
+  }
+} */
+/*
+class AttendanceScreen extends StatelessWidget {
+  const AttendanceScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = Get.find<AttendanceController>();
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    return Scaffold(
+      appBar: AppBar(title: const Text("Attendance"), centerTitle: true),
+      body: Obx(() {
+        if (controller.isLoading.value) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        return Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 800),
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: EdgeInsets.all(screenWidth > 600 ? 30 : 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _ActionButtons(controller: controller),
+                    _ExpandableFilter(controller: controller),
+                    const SizedBox(height: 16),
+
+                    if (controller.errorMessage.value.isNotEmpty)
+                      _buildErrorCard(context, controller.errorMessage.value),
+
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        return Row(
+                          children: [
+                            Expanded(
+                              child: _StatCard(
+                                icon: Icons.check_circle,
+                                label: "Present",
+                                count: controller.presentCount,
+                                color: const Color(0xFF10B981),
+                              ),
+                            ),
+                            SizedBox(width: constraints.maxWidth * 0.03),
+                            Expanded(
+                              child: _StatCard(
+                                icon: Icons.cancel,
+                                label: "Absent",
+                                count: controller.absentCount,
+                                color: const Color(0xFFEF4444),
+                              ),
+                            ),
+                            SizedBox(width: constraints.maxWidth * 0.03),
+                            Expanded(
+                              child: _StatCard(
+                                icon: Icons.event_busy,
+                                label: "Late",
+                                count: controller.leaveCount,
+                                color: const Color(0xFFF59E0B),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    Row(
+                      children: [
+                        Icon(Icons.history,
+                            color: Theme.of(context).colorScheme.primary),
+                        const SizedBox(width: 8),
+                        Text(
+                          "Daily Records",
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleLarge
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 16),
+                    _RecordsList(controller: controller),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
+  Widget _buildErrorCard(BuildContext context, String message) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Card(
+        color: Colors.red.withOpacity(0.1),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              const Icon(Icons.info_outline, color: Colors.red),
+              const SizedBox(width: 12),
+              Expanded(
+                  child: Text(message,
+                      style: const TextStyle(color: Colors.red))),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── _ActionButtons ───────────────────────────────────────────────────────────
+
+class _ActionButtons extends StatelessWidget {
+  final AttendanceController controller;
+  const _ActionButtons({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, constraints) {
+      return Row(
+        children: [
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: controller.toggleFilter,
+              icon: const Icon(Icons.filter_alt, size: 20, color: Colors.blue),
+              label: const Text('Filter',
+                  style: TextStyle(
+                      color: Colors.blue, fontWeight: FontWeight.bold)),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                side: const BorderSide(color: Colors.blue),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Obx(() => ElevatedButton.icon(
+                  onPressed: controller.isGeneratingPdf.value
+                      ? null
+                      : () => _generatePdf(context),
+                  icon: controller.isGeneratingPdf.value
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white))
+                      : const Icon(Icons.picture_as_pdf,
+                          size: 20, color: Colors.white),
+                  label: Text(
+                    controller.isGeneratingPdf.value
+                        ? 'Generating...'
+                        : 'Generate PDF',
+                    style: const TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue[700],
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    disabledBackgroundColor: Colors.grey,
+                  ),
+                )),
+          ),
+        ],
+      );
+    });
+  }
+
+  // ── ONLY THIS METHOD HAS CHANGED ──────────────────────────────────────────
+  Future<void> _generatePdf(BuildContext context) async {
+    if (controller.filteredRecords.isEmpty) {
+      Get.snackbar("Error", "No records found for this month.");
+      return;
+    }
+
+    controller.isGeneratingPdf.value = true;
+
+    try {
+      // ── 1. Request storage permission (Android 10 needs it for /Downloads) ──
+      PermissionStatus status;
+
+      if (Platform.isAndroid) {
+        // Android 13+ (SDK 33+) no longer needs WRITE_EXTERNAL_STORAGE
+        // for app-specific or MediaStore paths, but for direct /Downloads
+        // access we request it on ≤ Android 12 and use manageExternalStorage
+        // or the MediaStore approach on 13+. The cleanest cross-version path:
+        // request storage; on Android 13+ it auto-grants for Downloads.
+        status = await Permission.storage.request();
+
+        // On Android 13+ (status may be permanentlyDenied for legacy perm)
+        // fall back to manageExternalStorage if needed.
+        if (!status.isGranted) {
+          status = await Permission.manageExternalStorage.request();
+        }
+
+        if (!status.isGranted) {
+          Get.snackbar(
+            "Permission Denied",
+            "Storage permission is required to save the PDF.",
+            backgroundColor: Colors.red,
+            colorText: Colors.white,
+          );
+          return;
+        }
+      }
+
+      // ── 2. Resolve the Downloads/KI Software Solutions folder ────────────
+      //
+      // On Android the external storage Downloads directory is always at
+      // /storage/emulated/0/Download  (note: singular, no 's' on some OEMs).
+      // Using the hard-coded path is the most reliable option; path_provider's
+      // getExternalStorageDirectory() returns the app-specific directory, NOT
+      // the public Downloads folder.
+      //
+      const String folderName = 'KI Software Solutions';
+      final Directory downloadsDir =
+          Directory('/storage/emulated/0/Download');
+
+      final Directory saveDir =
+          Directory('${downloadsDir.path}/$folderName');
+
+      // ── 3. Create the folder if it does not exist ─────────────────────────
+      if (!await saveDir.exists()) {
+        await saveDir.create(recursive: true);
+      }
+
+      // ── 4. Build the PDF (identical to original logic) ────────────────────
+      final pdf = pw.Document();
+      final records = controller.filteredRecords;
+      final info = controller.studentInfo;
+      final interBold = pw.Font.helveticaBold();
+      final merriweatherBold = pw.Font.timesBold();
+      final dancingScriptBold = pw.Font.timesBoldItalic();
+
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(32),
+          build: (context) => [
+            _buildPdfHeader(merriweatherBold, dancingScriptBold, interBold),
+            pw.SizedBox(height: 20),
+            _buildPdfTitle(),
+            pw.SizedBox(height: 20),
+            _buildPdfStudentInfo(info),
+            pw.SizedBox(height: 20),
+            _buildPdfSummary(controller),
+            pw.SizedBox(height: 20),
+            _buildPdfAttendanceTable(controller, records),
+          ],
+        ),
+      );
+
+      // ── 5. Save bytes directly to the file ───────────────────────────────
+      final String fileName =
+          'Attendance_${info['name']}_${controller.selectedMonth.value}_'
+          '${controller.selectedYear.value}.pdf';
+
+      // Sanitise the file name so it has no characters illegal on Android FS
+      final String safeFileName =
+          fileName.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+
+      final File outputFile = File('${saveDir.path}/$safeFileName');
+      final List<int> pdfBytes = await pdf.save();
+
+      await outputFile.writeAsBytes(pdfBytes, flush: true);
+
+      // ── 6. Success feedback ───────────────────────────────────────────────
+      Get.snackbar(
+        "PDF Saved",
+        "Saved to: ${outputFile.path}",
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 5),
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    } on FileSystemException catch (e) {
+      Get.snackbar(
+        "Save Failed",
+        "File error: ${e.message} — ${e.path}",
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    } catch (e) {
+      Get.snackbar(
+        "Error",
+        "Failed to generate PDF: $e",
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    } finally {
+      controller.isGeneratingPdf.value = false;
+    }
+  }
+  // ── END OF CHANGED METHOD ─────────────────────────────────────────────────
+
+  pw.Widget _buildPdfHeader(
+      pw.Font titleFont, pw.Font subTitleFont, pw.Font boldFont) {
+    return pw.Center(
+      child: pw.Padding(
+        padding: const pw.EdgeInsets.fromLTRB(0, 20, 0, 10),
+        child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.center,
+          mainAxisSize: pw.MainAxisSize.min,
+          children: [
+            pw.Text(
+              "BENCHMARK",
+              style: pw.TextStyle(
+                font: titleFont,
+                fontSize: 25,
+                color: const PdfColor.fromInt(0xFF1E3A8A),
+              ),
+            ),
+            pw.Text(
+              "School of Leadership",
+              style: pw.TextStyle(
+                font: subTitleFont,
+                fontSize: 22,
+                color: const PdfColor.fromInt(0xFF0284C7),
+              ),
+            ),
+            pw.SizedBox(height: 8),
+            pw.Container(
+              padding:
+                  const pw.EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              decoration: const pw.BoxDecoration(
+                color: PdfColor.fromInt(0xFF1E293B),
+                borderRadius: pw.BorderRadius.all(pw.Radius.circular(30)),
+              ),
+              child: pw.Text(
+                "PLAY GROUP TO MATRIC",
+                style: pw.TextStyle(
+                  font: boldFont,
+                  color: PdfColors.white,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+            pw.SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  pw.Widget _buildPdfTitle() {
+    return pw.Center(
+      child: pw.Column(
+        children: [
+          pw.Text('ATTENDANCE RECORD',
+              style:
+                  pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+          pw.Container(height: 1, width: 200, color: PdfColors.grey400),
+        ],
+      ),
+    );
+  }
+
+  pw.Widget _buildPdfStudentInfo(Map<String, String> info) {
+    return pw.Container(
+      padding: const pw.EdgeInsets.all(10),
+      decoration: pw.BoxDecoration(
+          border: pw.Border.all(color: PdfColors.grey400),
+          borderRadius: const pw.BorderRadius.all(pw.Radius.circular(5))),
+      child: pw.Column(
+        children: [
+          pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [pw.Text('Name: ${info['name']}')]),
+          pw.SizedBox(height: 5),
+        ],
+      ),
+    );
+  }
+
+  pw.Widget _buildPdfSummary(AttendanceController controller) {
+    return pw.Row(
+      children: [
+        pw.Expanded(
+            child: pw.Text(
+                'Month: ${controller.selectedMonth.value} ${controller.selectedYear.value}')),
+        pw.Text(
+            'P: ${controller.presentCount} | A: ${controller.absentCount} | L: ${controller.leaveCount}'),
+      ],
+    );
+  }
+
+  pw.Widget _buildPdfAttendanceTable(
+      AttendanceController controller, List records) {
+    return pw.TableHelper.fromTextArray(
+      headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+      headers: ['Sr #', 'Date', 'Status'],
+      data: List<List<dynamic>>.generate(
+        records.length,
+        (index) => [
+          index + 1,
+          records[index].date,
+          controller.normalizeStatus(records[index].status),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── _StatCard ────────────────────────────────────────────────────────────────
+
+class _StatCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final int count;
+  final Color color;
+  const _StatCard(
+      {required this.icon,
+      required this.label,
+      required this.count,
+      required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.2)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: screenWidth > 600 ? 32 : 24),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: TextStyle(fontSize: screenWidth > 600 ? 14 : 11),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            count.toString(),
+            style: TextStyle(
+                fontSize: screenWidth > 600 ? 22 : 18,
+                fontWeight: FontWeight.bold,
+                color: color),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── _RecordsList ─────────────────────────────────────────────────────────────
+
+class _RecordsList extends StatelessWidget {
+  final AttendanceController controller;
+  const _RecordsList({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final records = controller.filteredRecords;
+    if (records.isEmpty) return const Center(child: Text("No records found"));
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: records.length,
+      itemBuilder: (context, index) {
+        final r = records[index];
+        return Card(
+          elevation: 0.5,
+          margin: const EdgeInsets.only(bottom: 8),
+          child: ListTile(
+            title: Text(r.date,
+                style: const TextStyle(fontWeight: FontWeight.w500)),
+            trailing: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                controller.normalizeStatus(r.status),
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ─── _ExpandableFilter ────────────────────────────────────────────────────────
+
+class _ExpandableFilter extends StatelessWidget {
+  final AttendanceController controller;
+  const _ExpandableFilter({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      if (!controller.isFilterExpanded.value) return const SizedBox.shrink();
+
+      return Padding(
+        padding: const EdgeInsets.only(top: 12),
+        child: Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            SizedBox(
+              width: (MediaQuery.of(context).size.width / 2) - 24,
+              child: DropdownButtonFormField<String>(
+                decoration: const InputDecoration(
+                    labelText: "Month", border: OutlineInputBorder()),
+                value: controller.selectedMonth.value,
+                items: AttendanceController.months
+                    .map((m) => DropdownMenuItem(value: m, child: Text(m)))
+                    .toList(),
+                onChanged: (v) => controller.setMonth(v!),
+              ),
+            ),
+            SizedBox(
+              width: (MediaQuery.of(context).size.width / 2) - 24,
+              child: DropdownButtonFormField<String>(
+                decoration: const InputDecoration(
+                    labelText: "Year", border: OutlineInputBorder()),
+                value: controller.selectedYear.value,
+                items: controller.availableYears
+                    .map((y) => DropdownMenuItem(value: y, child: Text(y)))
+                    .toList(),
+                onChanged: (v) => controller.setYear(v!),
+              ),
+            ),
+          ],
+        ),
+      );
+    });
+  }
+} */
+
+// ─── AttendanceScreen ─────────────────────────────────────────────────────────
+/*
+class AttendanceScreen extends StatelessWidget {
+  const AttendanceScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = Get.find<AttendanceController>();
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    return Scaffold(
+      appBar: AppBar(title: const Text("Attendance"), centerTitle: true),
+      body: Obx(() {
+        if (controller.isLoading.value) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        return Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 800),
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: EdgeInsets.all(screenWidth > 600 ? 30 : 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _ActionButtons(controller: controller),
+                    _ExpandableFilter(controller: controller),
+                    const SizedBox(height: 16),
+
+                    if (controller.errorMessage.value.isNotEmpty)
+                      _buildErrorCard(context, controller.errorMessage.value),
+
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        return Row(
+                          children: [
+                            Expanded(
+                              child: _StatCard(
+                                icon: Icons.check_circle,
+                                label: "Present",
+                                count: controller.presentCount,
+                                color: const Color(0xFF10B981),
+                              ),
+                            ),
+                            SizedBox(width: constraints.maxWidth * 0.03),
+                            Expanded(
+                              child: _StatCard(
+                                icon: Icons.cancel,
+                                label: "Absent",
+                                count: controller.absentCount,
+                                color: const Color(0xFFEF4444),
+                              ),
+                            ),
+                            SizedBox(width: constraints.maxWidth * 0.03),
+                            Expanded(
+                              child: _StatCard(
+                                icon: Icons.event_busy,
+                                label: "Late",
+                                count: controller.leaveCount,
+                                color: const Color(0xFFF59E0B),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.history,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          "Daily Records",
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 16),
+                    _RecordsList(controller: controller),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
+  Widget _buildErrorCard(BuildContext context, String message) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Card(
+        color: Colors.red.withOpacity(0.1),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              const Icon(Icons.info_outline, color: Colors.red),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(message, style: const TextStyle(color: Colors.red)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── _ActionButtons ───────────────────────────────────────────────────────────
+
+class _ActionButtons extends StatelessWidget {
+  final AttendanceController controller;
+  const _ActionButtons({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: controller.toggleFilter,
+                icon: const Icon(
+                  Icons.filter_alt,
+                  size: 20,
+                  color: Colors.blue,
+                ),
+                label: const Text(
+                  'Filter',
+                  style: TextStyle(
+                    color: Colors.blue,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  side: const BorderSide(color: Colors.blue),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Obx(
+                () => ElevatedButton.icon(
+                  onPressed: controller.isGeneratingPdf.value
+                      ? null
+                      : () => _generatePdf(context),
+                  icon: controller.isGeneratingPdf.value
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(
+                          Icons.picture_as_pdf,
+                          size: 20,
+                          color: Colors.white,
+                        ),
+                  label: Text(
+                    controller.isGeneratingPdf.value
+                        ? 'Generating...'
+                        : 'Generate PDF',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue[700],
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    disabledBackgroundColor: Colors.grey,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // ─── PDF Generation (only this method handles saving logic) ──────────────
+
+  Future<void> _generatePdf(BuildContext context) async {
+    if (controller.filteredRecords.isEmpty) {
+      Get.snackbar("Error", "No records found for this month.");
+      return;
+    }
+
+    controller.isGeneratingPdf.value = true;
+
+    try {
+      // ── 1. Permission: only needed on Android SDK 29 and below ───────────
+      if (Platform.isAndroid) {
+        final androidInfo = await DeviceInfoPlugin().androidInfo;
+        final sdkInt = androidInfo.version.sdkInt;
+
+        if (sdkInt <= 29) {
+          // Android 10 and below require WRITE_EXTERNAL_STORAGE
+          final status = await Permission.storage.request();
+          if (!status.isGranted) {
+            Get.snackbar(
+              "Permission Denied",
+              "Please allow storage permission to save the PDF.",
+              backgroundColor: Colors.red,
+              colorText: Colors.white,
+              duration: const Duration(seconds: 4),
+            );
+            return;
+          }
+        }
+        // Android 11+ (SDK 30+): writing to /storage/emulated/0/Download
+        // does NOT require any permission — the OS allows it freely.
+        // Android 13+ (SDK 33+): same rule applies, no permission needed.
+      }
+
+      // ── 2. Resolve save directory ─────────────────────────────────────────
+      // /storage/emulated/0/Download is the standard public Downloads folder
+      // on all Android devices. path_provider's getExternalStorageDirectory()
+      // returns the app-private directory, so we use the hard-coded path.
+      const String folderName = 'KI Software Solutions';
+      final Directory saveDir = Directory(
+        '/storage/emulated/0/Download/$folderName',
+      );
+
+      // ── 3. Create folder if it does not exist ─────────────────────────────
+      if (!await saveDir.exists()) {
+        await saveDir.create(recursive: true);
+      }
+
+      // ── 4. Build the PDF document ─────────────────────────────────────────
+      final pdf = pw.Document();
+      final records = controller.filteredRecords;
+      final info = controller.studentInfo;
+      final interBold = pw.Font.helveticaBold();
+      final merriweatherBold = pw.Font.timesBold();
+      final dancingScriptBold = pw.Font.timesBoldItalic();
+
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(32),
+          build: (ctx) => [
+            _buildPdfHeader(merriweatherBold, dancingScriptBold, interBold),
+            pw.SizedBox(height: 20),
+            _buildPdfTitle(),
+            pw.SizedBox(height: 20),
+            _buildPdfStudentInfo(info),
+            pw.SizedBox(height: 20),
+            _buildPdfSummary(controller),
+            pw.SizedBox(height: 20),
+            _buildPdfAttendanceTable(controller, records),
+          ],
+        ),
+      );
+
+      // ── 5. Build safe file name and write bytes to disk ───────────────────
+      final String rawName =
+          'Attendance_${info['name']}_${controller.selectedMonth.value}'
+          '_${controller.selectedYear.value}.pdf';
+
+      // Strip characters that are illegal on the Android file system
+      final String safeFileName = rawName.replaceAll(
+        RegExp(r'[\\/:*?"<>|\s]'),
+        '_',
+      );
+
+      final File outputFile = File('${saveDir.path}/$safeFileName');
+      final List<int> pdfBytes = await pdf.save();
+      await outputFile.writeAsBytes(pdfBytes, flush: true);
+
+      // ── 6. Confirm the file was actually written ──────────────────────────
+      if (!await outputFile.exists()) {
+        throw FileSystemException('File was not created.', outputFile.path);
+      }
+
+      // ── 7. Success snackbar with full path ────────────────────────────────
+      Get.snackbar(
+        " PDF Saved",
+        "Saved to: Downloads/KI Software Solutions/$safeFileName",
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 6),
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(12),
+      );
+    } on FileSystemException catch (e) {
+      Get.snackbar(
+        "Save Failed",
+        "File error: ${e.message}\nPath: ${e.path}",
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 6),
+      );
+    } catch (e) {
+      Get.snackbar(
+        "Error",
+        "Failed to generate PDF: $e",
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 6),
+      );
+    } finally {
+      controller.isGeneratingPdf.value = false;
+    }
+  }
+
+  // ─── PDF Builder Helpers ──────────────────────────────────────────────────
+
+  pw.Widget _buildPdfHeader(
+    pw.Font titleFont,
+    pw.Font subTitleFont,
+    pw.Font boldFont,
+  ) {
+    return pw.Center(
+      child: pw.Padding(
+        padding: const pw.EdgeInsets.fromLTRB(0, 20, 0, 10),
+        child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.center,
+          mainAxisSize: pw.MainAxisSize.min,
+          children: [
+            pw.Text(
+              "BENCHMARK",
+              style: pw.TextStyle(
+                font: titleFont,
+                fontSize: 25,
+                color: const PdfColor.fromInt(0xFF1E3A8A),
+              ),
+            ),
+            pw.Text(
+              "School of Leadership",
+              style: pw.TextStyle(
+                font: subTitleFont,
+                fontSize: 22,
+                color: const PdfColor.fromInt(0xFF0284C7),
+              ),
+            ),
+            pw.SizedBox(height: 8),
+            pw.Container(
+              padding: const pw.EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 6,
+              ),
+              decoration: const pw.BoxDecoration(
+                color: PdfColor.fromInt(0xFF1E293B),
+                borderRadius: pw.BorderRadius.all(pw.Radius.circular(30)),
+              ),
+              child: pw.Text(
+                "PLAY GROUP TO MATRIC",
+                style: pw.TextStyle(
+                  font: boldFont,
+                  color: PdfColors.white,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+            pw.SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  pw.Widget _buildPdfTitle() {
+    return pw.Center(
+      child: pw.Column(
+        children: [
+          pw.Text(
+            'ATTENDANCE RECORD',
+            style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
+          ),
+          pw.Container(height: 1, width: 200, color: PdfColors.grey400),
+        ],
+      ),
+    );
+  }
+
+  pw.Widget _buildPdfStudentInfo(Map<String, String> info) {
+    return pw.Container(
+      padding: const pw.EdgeInsets.all(10),
+      decoration: pw.BoxDecoration(
+        border: pw.Border.all(color: PdfColors.grey400),
+        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(5)),
+      ),
+      child: pw.Column(
+        children: [
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [pw.Text('Name: ${info['name']}')],
+          ),
+          pw.SizedBox(height: 5),
+        ],
+      ),
+    );
+  }
+
+  pw.Widget _buildPdfSummary(AttendanceController controller) {
+    return pw.Row(
+      children: [
+        pw.Expanded(
+          child: pw.Text(
+            'Month: ${controller.selectedMonth.value} ${controller.selectedYear.value}',
+          ),
+        ),
+        pw.Text(
+          'P: ${controller.presentCount} | A: ${controller.absentCount} | L: ${controller.leaveCount}',
+        ),
+      ],
+    );
+  }
+
+  pw.Widget _buildPdfAttendanceTable(
+    AttendanceController controller,
+    List records,
+  ) {
+    return pw.TableHelper.fromTextArray(
+      headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+      headers: ['Sr #', 'Date', 'Status'],
+      data: List<List<dynamic>>.generate(
+        records.length,
+        (index) => [
+          index + 1,
+          records[index].date,
+          controller.normalizeStatus(records[index].status),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── _StatCard ────────────────────────────────────────────────────────────────
+
+class _StatCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final int count;
+  final Color color;
+
+  const _StatCard({
+    required this.icon,
+    required this.label,
+    required this.count,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.2)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: screenWidth > 600 ? 32 : 24),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: TextStyle(fontSize: screenWidth > 600 ? 14 : 11),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            count.toString(),
+            style: TextStyle(
+              fontSize: screenWidth > 600 ? 22 : 18,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── _RecordsList ─────────────────────────────────────────────────────────────
+
+class _RecordsList extends StatelessWidget {
+  final AttendanceController controller;
+  const _RecordsList({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final records = controller.filteredRecords;
+    if (records.isEmpty) {
+      return const Center(child: Text("No records found"));
+    }
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: records.length,
+      itemBuilder: (context, index) {
+        final r = records[index];
+        return Card(
+          elevation: 0.5,
+          margin: const EdgeInsets.only(bottom: 8),
+          child: ListTile(
+            title: Text(
+              r.date,
+              style: const TextStyle(fontWeight: FontWeight.w500),
+            ),
+            trailing: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                controller.normalizeStatus(r.status),
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ─── _ExpandableFilter ────────────────────────────────────────────────────────
+
+class _ExpandableFilter extends StatelessWidget {
+  final AttendanceController controller;
+  const _ExpandableFilter({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      // Early return = zero height when collapsed
+      if (!controller.isFilterExpanded.value) return const SizedBox.shrink();
+
+      return Padding(
+        padding: const EdgeInsets.only(top: 12),
+        child: Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            SizedBox(
+              width: (MediaQuery.of(context).size.width / 2) - 24,
+              child: DropdownButtonFormField<String>(
+                decoration: const InputDecoration(
+                  labelText: "Month",
+                  border: OutlineInputBorder(),
+                ),
+                value: controller.selectedMonth.value,
+                items: AttendanceController.months
+                    .map((m) => DropdownMenuItem(value: m, child: Text(m)))
+                    .toList(),
+                onChanged: (v) => controller.setMonth(v!),
+              ),
+            ),
+            SizedBox(
+              width: (MediaQuery.of(context).size.width / 2) - 24,
+              child: DropdownButtonFormField<String>(
+                decoration: const InputDecoration(
+                  labelText: "Year",
+                  border: OutlineInputBorder(),
+                ),
+                value: controller.selectedYear.value,
+                items: controller.availableYears
+                    .map((y) => DropdownMenuItem(value: y, child: Text(y)))
+                    .toList(),
+                onChanged: (v) => controller.setYear(v!),
+              ),
+            ),
+          ],
+        ),
+      );
+    });
+  }
+}*/
+
+class AttendanceScreen extends StatelessWidget {
+  const AttendanceScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = Get.find<AttendanceController>();
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    return Scaffold(
+      appBar: AppBar(title: const Text("Attendance"), centerTitle: true),
+      body: Obx(() {
+        if (controller.isLoading.value) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        return Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 800),
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: EdgeInsets.all(screenWidth > 600 ? 30 : 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _ActionButtons(controller: controller),
+                    _ExpandableFilter(controller: controller),
+                    const SizedBox(height: 16),
+
+                    if (controller.errorMessage.value.isNotEmpty)
+                      _buildErrorCard(context, controller.errorMessage.value),
+
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        return Row(
+                          children: [
+                            Expanded(
+                              child: _StatCard(
+                                icon: Icons.check_circle,
+                                label: "Present",
+                                count: controller.presentCount,
+                                color: const Color(0xFF10B981),
+                              ),
+                            ),
+                            SizedBox(width: constraints.maxWidth * 0.03),
+                            Expanded(
+                              child: _StatCard(
+                                icon: Icons.cancel,
+                                label: "Absent",
+                                count: controller.absentCount,
+                                color: const Color(0xFFEF4444),
+                              ),
+                            ),
+                            SizedBox(width: constraints.maxWidth * 0.03),
+                            Expanded(
+                              child: _StatCard(
+                                icon: Icons.event_busy,
+                                label: "Late",
+                                count: controller.leaveCount,
+                                color: const Color(0xFFF59E0B),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.history,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          "Daily Records",
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 16),
+                    _RecordsList(controller: controller),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
+  Widget _buildErrorCard(BuildContext context, String message) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Card(
+        color: Colors.red.withOpacity(0.1),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              const Icon(Icons.info_outline, color: Colors.red),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(message, style: const TextStyle(color: Colors.red)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── _ActionButtons ───────────────────────────────────────────────────────────
+
+class _ActionButtons extends StatelessWidget {
+  final AttendanceController controller;
+  const _ActionButtons({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: controller.toggleFilter,
+                icon: const Icon(
+                  Icons.filter_alt,
+                  size: 20,
+                  color: Colors.blue,
+                ),
+                label: const Text(
+                  'Filter',
+                  style: TextStyle(
+                    color: Colors.blue,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  side: const BorderSide(color: Colors.blue),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Obx(
+                () => ElevatedButton.icon(
+                  onPressed: controller.isGeneratingPdf.value
+                      ? null
+                      : () => _generatePdf(context),
+                  icon: controller.isGeneratingPdf.value
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(
+                          Icons.picture_as_pdf,
+                          size: 20,
+                          color: Colors.white,
+                        ),
+                  label: Text(
+                    controller.isGeneratingPdf.value
+                        ? 'Generating...'
+                        : 'Generate PDF',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue[700],
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    disabledBackgroundColor: Colors.grey,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _generatePdf(BuildContext context) async {
+    if (controller.filteredRecords.isEmpty) {
+      Get.snackbar("Error", "No records found for this month.");
+      return;
+    }
+
+    controller.isGeneratingPdf.value = true;
+
+    try {
+      if (Platform.isAndroid) {
+        final androidInfo = await DeviceInfoPlugin().androidInfo;
+        final sdkInt = androidInfo.version.sdkInt;
+
+        if (sdkInt <= 29) {
+          final status = await Permission.storage.request();
+          if (!status.isGranted) {
+            Get.snackbar(
+              "Permission Denied",
+              "Please allow storage permission to save the PDF.",
+              backgroundColor: Colors.red,
+              colorText: Colors.white,
+              duration: const Duration(seconds: 4),
+            );
+            return;
+          }
+        }
+      }
+
+      const String folderName = 'KI Software Solutions';
+      final Directory saveDir = Directory(
+        '/storage/emulated/0/Download/$folderName',
+      );
+
+      if (!await saveDir.exists()) {
+        await saveDir.create(recursive: true);
+      }
+
+      final pdf = pw.Document();
+      final records = controller.filteredRecords;
+      final info = controller.studentInfo;
+      final interBold = pw.Font.helveticaBold();
+      final merriweatherBold = pw.Font.timesBold();
+      final dancingScriptBold = pw.Font.timesBoldItalic();
+
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(32),
+          build: (ctx) => [
+            _buildPdfHeader(merriweatherBold, dancingScriptBold, interBold),
+            pw.SizedBox(height: 20),
+            _buildPdfTitle(),
+            pw.SizedBox(height: 20),
+            _buildPdfStudentInfo(info),
+            pw.SizedBox(height: 20),
+            _buildPdfSummary(controller),
+            pw.SizedBox(height: 20),
+            _buildPdfAttendanceTable(controller, records),
+          ],
+        ),
+      );
+
+      final String rawName =
+          'Attendance_${info['name']}_${controller.selectedMonth.value}'
+          '_${controller.selectedYear.value}.pdf';
+
+      final String safeFileName = rawName.replaceAll(
+        RegExp(r'[\\/:*?"<>|\s]'),
+        '_',
+      );
+
+      final File outputFile = File('${saveDir.path}/$safeFileName');
+      final List<int> pdfBytes = await pdf.save();
+      await outputFile.writeAsBytes(pdfBytes, flush: true);
+
+      if (!await outputFile.exists()) {
+        throw FileSystemException('File was not created.', outputFile.path);
+      }
+
+      Get.snackbar(
+        " PDF Saved",
+        "Saved to: Downloads/KI Software Solutions/$safeFileName",
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 6),
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(12),
+      );
+    } on FileSystemException catch (e) {
+      Get.snackbar(
+        "Save Failed",
+        "File error: ${e.message}\nPath: ${e.path}",
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 6),
+      );
+    } catch (e) {
+      Get.snackbar(
+        "Error",
+        "Failed to generate PDF: $e",
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 6),
+      );
+    } finally {
+      controller.isGeneratingPdf.value = false;
+    }
+  }
+
+  pw.Widget _buildPdfHeader(
+    pw.Font titleFont,
+    pw.Font subTitleFont,
+    pw.Font boldFont,
+  ) {
+    return pw.Center(
+      child: pw.Padding(
+        padding: const pw.EdgeInsets.fromLTRB(0, 20, 0, 10),
+        child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.center,
+          mainAxisSize: pw.MainAxisSize.min,
+          children: [
+            pw.Text(
+              "BENCHMARK",
+              style: pw.TextStyle(
+                font: titleFont,
+                fontSize: 25,
+                color: const PdfColor.fromInt(0xFF1E3A8A),
+              ),
+            ),
+            pw.Text(
+              "School of Leadership",
+              style: pw.TextStyle(
+                font: subTitleFont,
+                fontSize: 22,
+                color: const PdfColor.fromInt(0xFF0284C7),
+              ),
+            ),
+            pw.SizedBox(height: 8),
+            pw.Container(
+              padding: const pw.EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 6,
+              ),
+              decoration: const pw.BoxDecoration(
+                color: PdfColor.fromInt(0xFF1E293B),
+                borderRadius: pw.BorderRadius.all(pw.Radius.circular(30)),
+              ),
+              child: pw.Text(
+                "PLAY GROUP TO MATRIC",
+                style: pw.TextStyle(
+                  font: boldFont,
+                  color: PdfColors.white,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+            pw.SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  pw.Widget _buildPdfTitle() {
+    return pw.Center(
+      child: pw.Column(
+        children: [
+          pw.Text(
+            'ATTENDANCE RECORD',
+            style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
+          ),
+          pw.Container(height: 1, width: 200, color: PdfColors.grey400),
+        ],
+      ),
+    );
+  }
+
+  pw.Widget _buildPdfStudentInfo(Map<String, String> info) {
+    return pw.Container(
+      padding: const pw.EdgeInsets.all(10),
+      decoration: pw.BoxDecoration(
+        border: pw.Border.all(color: PdfColors.grey400),
+        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(5)),
+      ),
+      child: pw.Column(
+        children: [
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [pw.Text('Name: ${info['name']}')],
+          ),
+          pw.SizedBox(height: 5),
+        ],
+      ),
+    );
+  }
+
+  pw.Widget _buildPdfSummary(AttendanceController controller) {
+    return pw.Row(
+      children: [
+        pw.Expanded(
+          child: pw.Text(
+            'Month: ${controller.selectedMonth.value} ${controller.selectedYear.value}',
+          ),
+        ),
+        pw.Text(
+          'P: ${controller.presentCount} | A: ${controller.absentCount} | L: ${controller.leaveCount}',
+        ),
+      ],
+    );
+  }
+
+  pw.Widget _buildPdfAttendanceTable(
+    AttendanceController controller,
+    List records,
+  ) {
+    return pw.TableHelper.fromTextArray(
+      headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+      headers: ['Sr #', 'Date', 'Status'],
+      data: List<List<dynamic>>.generate(
+        records.length,
+        (index) => [
+          index + 1,
+          records[index].date,
+          controller.normalizeStatus(records[index].status),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── _StatCard ────────────────────────────────────────────────────────────────
+
+class _StatCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final int count;
+  final Color color;
+
+  const _StatCard({
+    required this.icon,
+    required this.label,
+    required this.count,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.2)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: screenWidth > 600 ? 32 : 24),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: TextStyle(fontSize: screenWidth > 600 ? 14 : 11),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            count.toString(),
+            style: TextStyle(
+              fontSize: screenWidth > 600 ? 22 : 18,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── _RecordsList ─────────────────────────────────────────────────────────────
+
+class _RecordsList extends StatelessWidget {
+  final AttendanceController controller;
+  const _RecordsList({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final records = controller.filteredRecords;
+    if (records.isEmpty) {
+      return const Center(child: Text("No records found"));
+    }
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: records.length,
+      itemBuilder: (context, index) {
+        final r = records[index];
+        return Card(
+          elevation: 0.5,
+          margin: const EdgeInsets.only(bottom: 8),
+          child: ListTile(
+            title: Text(
+              r.date,
+              style: const TextStyle(fontWeight: FontWeight.w500),
+            ),
+            trailing: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                controller.normalizeStatus(r.status),
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ─── _ExpandableFilter ────────────────────────────────────────────────────────
+
+class _ExpandableFilter extends StatelessWidget {
+  final AttendanceController controller;
+  const _ExpandableFilter({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      if (!controller.isFilterExpanded.value) return const SizedBox.shrink();
+
+      return Padding(
+        padding: const EdgeInsets.only(top: 12),
+        child: Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            SizedBox(
+              width: (MediaQuery.of(context).size.width / 2) - 24,
+              child: DropdownButtonFormField<String>(
+                decoration: const InputDecoration(
+                  labelText: "Month",
+                  border: OutlineInputBorder(),
+                ),
+                value: controller.selectedMonth.value,
+                items: AttendanceController.months
+                    .map((m) => DropdownMenuItem(value: m, child: Text(m)))
+                    .toList(),
+                onChanged: (v) => controller.setMonth(v!),
+              ),
+            ),
+            SizedBox(
+              width: (MediaQuery.of(context).size.width / 2) - 24,
+              child: DropdownButtonFormField<String>(
+                decoration: const InputDecoration(
+                  labelText: "Year",
+                  border: OutlineInputBorder(),
+                ),
+                value: controller.selectedYear.value,
+                items: controller.availableYears
+                    .map((y) => DropdownMenuItem(value: y, child: Text(y)))
+                    .toList(),
+                onChanged: (v) => controller.setYear(v!),
+              ),
+            ),
+          ],
+        ),
+      );
+    });
   }
 }

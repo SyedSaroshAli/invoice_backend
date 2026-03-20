@@ -116,7 +116,6 @@ import 'package:get/get.dart';
 import 'package:school_management_system/controllers/academicCardController.dart';
 import 'package:school_management_system/controllers/attendance_controller.dart';
 import 'package:school_management_system/controllers/student_fee_controller.dart';
-import 'package:school_management_system/services/auth_service.dart';
 import 'academic_progress_card.dart';
 import 'attendance_pie_chart_card.dart';
 import 'next_fee_due_card.dart';

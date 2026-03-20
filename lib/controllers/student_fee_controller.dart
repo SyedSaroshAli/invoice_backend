@@ -171,7 +171,7 @@ class StudentFeeController extends GetxController {
         // "No Pending Fee" or similar message
         pendingFeeMessage.value = response.trim().replaceAll('"', '');
       } else if (response is List) {
-        // TODO: Parse pending fee list if API returns structured data
+      
         pendingFeeMessage.value = response.map((e) => e.toString()).join(', ');
       } else {
         pendingFeeMessage.value = 'No Pending Fee';
@@ -740,6 +740,8 @@ import 'package:school_management_system/models/student_fee_models.dart';
 import 'package:school_management_system/services/api_service.dart';
 import 'package:school_management_system/services/auth_service.dart';
 import 'package:intl/intl.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 
 class StudentFeeController extends GetxController {
   // ─── State ──────────────────────────────────────────────
