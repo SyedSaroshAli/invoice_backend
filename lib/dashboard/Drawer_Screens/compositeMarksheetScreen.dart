@@ -598,13 +598,12 @@ class _CompositeMarksheetTable extends StatelessWidget {
 }
 */
 
-
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:school_management_system/controllers/compositeMarksheetController.dart';
 import 'package:school_management_system/models/compositeMarksheetModel.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:school_management_system/utils/pdf_handler.dart';
 
 class CompositeMarksheetScreen extends StatelessWidget {
   const CompositeMarksheetScreen({super.key});
@@ -689,7 +688,7 @@ class CompositeMarksheetScreen extends StatelessWidget {
         }
 
         final selected = controller.marksheetData.value;
-        
+
         return Center(
           child: Container(
             // Best practice: Limit content width on web/tablets for readability
@@ -749,27 +748,51 @@ class _ButtonsRow extends StatelessWidget {
           child: Obx(() {
             final canGenerate = controller.selectedMarksheet.value != null;
             final isBusy = controller.isGeneratingPdf.value;
-            return ElevatedButton.icon(
-              icon: isBusy
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Icon(LucideIcons.fileText, size: 20),
-              label: Text(isBusy ? 'Generating...' : 'Generate PDF'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+            return AbsorbPointer(
+              absorbing: !canGenerate || isBusy,
+              child: Opacity(
+                opacity: (!canGenerate || isBusy) ? 0.5 : 1.0,
+                child: PdfHandler.buildPdfActionMenu(
+                  context,
+                  (isDownload) =>
+                      controller.generatePdf(context, isDownload: isDownload),
+                  isLoading: isBusy,
+                  customChild: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).primaryColor,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        isBusy
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(
+                                LucideIcons.fileText,
+                                size: 20,
+                                color: Colors.white,
+                              ),
+                        const SizedBox(width: 8),
+                        Text(
+                          isBusy ? 'Generating...' : 'Generate PDF',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-              onPressed: (!canGenerate || isBusy)
-                  ? null
-                  : controller.generatePdf,
             );
           }),
         ),
@@ -924,7 +947,9 @@ class _StudentInfoCard extends StatelessWidget {
                       const Divider(height: 24),
                       Row(
                         children: [
-                          Expanded(child: _PercentageBlock(value: percentageText)),
+                          Expanded(
+                            child: _PercentageBlock(value: percentageText),
+                          ),
                           const SizedBox(width: 12),
                           Expanded(child: _GradeBlock(value: info.grade)),
                         ],
@@ -942,7 +967,10 @@ class _StudentInfoCard extends StatelessWidget {
                           children: [
                             SizedBox(
                               width: 200,
-                              child: _InfoItem('Student Name', info.studentName),
+                              child: _InfoItem(
+                                'Student Name',
+                                info.studentName,
+                              ),
                             ),
                             SizedBox(
                               width: 200,
@@ -959,7 +987,10 @@ class _StudentInfoCard extends StatelessWidget {
                       IntrinsicWidth(
                         child: Column(
                           children: [
-                            _PercentageBlock(value: percentageText, large: true),
+                            _PercentageBlock(
+                              value: percentageText,
+                              large: true,
+                            ),
                             const SizedBox(height: 12),
                             _GradeBlock(value: info.grade),
                           ],
@@ -1177,10 +1208,15 @@ class _CompositeMarksheetTable extends StatelessWidget {
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: ConstrainedBox(
-                constraints: BoxConstraints(minWidth: constraints.maxWidth - 16),
+                constraints: BoxConstraints(
+                  minWidth: constraints.maxWidth - 16,
+                ),
                 child: DataTable(
                   border: TableBorder(
-                    horizontalInside: BorderSide(color: borderColor, width: 0.5),
+                    horizontalInside: BorderSide(
+                      color: borderColor,
+                      width: 0.5,
+                    ),
                     bottom: BorderSide(color: borderColor, width: 0.5),
                   ),
                   headingRowColor: WidgetStateProperty.all(

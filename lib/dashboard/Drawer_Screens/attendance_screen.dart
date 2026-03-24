@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:pdf/pdf.dart';
@@ -10,6 +11,7 @@ import 'package:path_provider/path_provider.dart';
 //import 'package:flutter/services.dart' show NetworkAssetBundle, rootBundle;
 import 'package:school_management_system/controllers/attendance_controller.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:school_management_system/utils/pdf_handler.dart';
 
 /*
 class AttendanceScreen extends StatelessWidget {
@@ -3706,41 +3708,55 @@ class _ActionButtons extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: Obx(
-                () => ElevatedButton.icon(
-                  onPressed: controller.isGeneratingPdf.value
-                      ? null
-                      : () => _generatePdf(context),
-                  icon: controller.isGeneratingPdf.value
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Icon(
-                          Icons.picture_as_pdf,
-                          size: 20,
-                          color: Colors.white,
+              child: Obx(() {
+                final isBusy = controller.isGeneratingPdf.value;
+                return AbsorbPointer(
+                  absorbing: isBusy,
+                  child: Opacity(
+                    opacity: isBusy ? 0.5 : 1.0,
+                    child: PdfHandler.buildPdfActionMenu(
+                      context,
+                      (isDownload) =>
+                          _generatePdf(context, isDownload: isDownload),
+                      isLoading: isBusy,
+                      customChild: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          color: isBusy ? Colors.grey : Colors.blue[700],
+                          borderRadius: BorderRadius.circular(4),
                         ),
-                  label: Text(
-                    controller.isGeneratingPdf.value
-                        ? 'Generating...'
-                        : 'Generate PDF',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            isBusy
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Icon(
+                                    Icons.picture_as_pdf,
+                                    size: 20,
+                                    color: Colors.white,
+                                  ),
+                            const SizedBox(width: 8),
+                            Text(
+                              isBusy ? 'Generating...' : 'Generate PDF',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue[700],
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    disabledBackgroundColor: Colors.grey,
-                  ),
-                ),
-              ),
+                );
+              }),
             ),
           ],
         );
@@ -3748,7 +3764,10 @@ class _ActionButtons extends StatelessWidget {
     );
   }
 
-  Future<void> _generatePdf(BuildContext context) async {
+  Future<void> _generatePdf(
+    BuildContext context, {
+    required bool isDownload,
+  }) async {
     if (controller.filteredRecords.isEmpty) {
       Get.snackbar("Error", "No records found for this month.");
       return;
@@ -3757,34 +3776,6 @@ class _ActionButtons extends StatelessWidget {
     controller.isGeneratingPdf.value = true;
 
     try {
-      if (Platform.isAndroid) {
-        final androidInfo = await DeviceInfoPlugin().androidInfo;
-        final sdkInt = androidInfo.version.sdkInt;
-
-        if (sdkInt <= 29) {
-          final status = await Permission.storage.request();
-          if (!status.isGranted) {
-            Get.snackbar(
-              "Permission Denied",
-              "Please allow storage permission to save the PDF.",
-              backgroundColor: Colors.red,
-              colorText: Colors.white,
-              duration: const Duration(seconds: 4),
-            );
-            return;
-          }
-        }
-      }
-
-      const String folderName = 'KI Software Solutions';
-      final Directory saveDir = Directory(
-        '/storage/emulated/0/Download/$folderName',
-      );
-
-      if (!await saveDir.exists()) {
-        await saveDir.create(recursive: true);
-      }
-
       final pdf = pw.Document();
       final records = controller.filteredRecords;
       final info = controller.studentInfo;
@@ -3819,30 +3810,13 @@ class _ActionButtons extends StatelessWidget {
         '_',
       );
 
-      final File outputFile = File('${saveDir.path}/$safeFileName');
-      final List<int> pdfBytes = await pdf.save();
-      await outputFile.writeAsBytes(pdfBytes, flush: true);
+      final Uint8List pdfBytes = await pdf.save();
 
-      if (!await outputFile.exists()) {
-        throw FileSystemException('File was not created.', outputFile.path);
-      }
-
-      Get.snackbar(
-        " PDF Saved",
-        "Saved to: Downloads/KI Software Solutions/$safeFileName",
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
-        duration: const Duration(seconds: 6),
-        snackPosition: SnackPosition.BOTTOM,
-        margin: const EdgeInsets.all(12),
-      );
-    } on FileSystemException catch (e) {
-      Get.snackbar(
-        "Save Failed",
-        "File error: ${e.message}\nPath: ${e.path}",
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        duration: const Duration(seconds: 6),
+      await PdfHandler.handlePdfAction(
+        context,
+        pdfBytes,
+        safeFileName,
+        isDownload: isDownload,
       );
     } catch (e) {
       Get.snackbar(

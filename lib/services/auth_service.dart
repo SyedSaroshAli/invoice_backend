@@ -49,6 +49,11 @@ class AuthService {
       requiresAuth: false,
     );
 
+    // Print the whole response body of login API as requested
+    print("===== LOGIN API RESPONSE =====");
+    print(response);
+    print("==============================");
+
     if (response is Map<String, dynamic>) {
       // Check for error response: {"message": "Invalid Username or Password"}
       if (response.containsKey('message') && !response.containsKey('student')) {

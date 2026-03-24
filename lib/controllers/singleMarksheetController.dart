@@ -478,12 +478,11 @@ class MarksheetController extends GetxController {
 import 'package:get/get.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
+import 'package:flutter/material.dart';
+import 'package:school_management_system/utils/pdf_handler.dart';
 import 'package:school_management_system/models/singleMarksheetModel.dart';
 import 'package:school_management_system/services/api_service.dart';
 import 'package:school_management_system/services/auth_service.dart';
-import 'dart:io';
-import 'package:path_provider/path_provider.dart';
 
 class MarksheetController extends GetxController {
   // Observable variables
@@ -726,7 +725,10 @@ class MarksheetController extends GetxController {
   }
 
   /// Generate PDF from marksheet
-  Future<void> generatePdf() async {
+  Future<void> generatePdf(
+    BuildContext context, {
+    required bool isDownload,
+  }) async {
     if (marksheet.value == null) {
       Get.snackbar(
         'Error',
@@ -751,11 +753,12 @@ class MarksheetController extends GetxController {
         ),
       );
 
-      // Save and share PDF
-      await Printing.sharePdf(
-        bytes: await pdf.save(),
-        filename:
-            'Marksheet_${data.studentInfo.name.replaceAll(' ', '_')}_${DateTime.now().millisecondsSinceEpoch}.pdf',
+      // Save and share/download PDF
+      await PdfHandler.handlePdfAction(
+        context,
+        await pdf.save(),
+        'Marksheet_${data.studentInfo.name.replaceAll(' ', '_')}_${DateTime.now().millisecondsSinceEpoch}.pdf',
+        isDownload: isDownload,
       );
 
       Get.snackbar(
@@ -846,19 +849,9 @@ class MarksheetController extends GetxController {
           '${info.obtainedMarks.toStringAsFixed(0)} / ${info.totalMarks.toStringAsFixed(0)}',
         ),
         // Percentage row — no Grade here anymore
-        _buildPdfTableRow(
-          '',
-          '',
-          'Percentage:',
-          info.percentage,
-        ),
+        _buildPdfTableRow('', '', 'Percentage:', info.percentage),
         // Grade now has its own dedicated row below Percentage
-        _buildPdfTableRow(
-          '',
-          '',
-          'Grade:',
-          info.remarksGrade,
-        ),
+        _buildPdfTableRow('', '', 'Grade:', info.remarksGrade),
       ],
     );
   }

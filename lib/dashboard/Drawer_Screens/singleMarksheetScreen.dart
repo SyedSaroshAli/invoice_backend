@@ -672,12 +672,12 @@ class MarksheetScreen extends StatelessWidget {
   }
 } */
 
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:school_management_system/controllers/singleMarksheetController.dart';
 import 'package:school_management_system/models/singleMarksheetModel.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:school_management_system/utils/pdf_handler.dart';
 
 class MarksheetScreen extends StatelessWidget {
   const MarksheetScreen({super.key});
@@ -776,29 +776,65 @@ class MarksheetScreen extends StatelessWidget {
                 label: const Text('Filter'),
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: Obx(
-                () => ElevatedButton.icon(
-                  onPressed: controller.isGeneratingPdf.value ? null : controller.generatePdf,
-                  icon: controller.isGeneratingPdf.value
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Icon(LucideIcons.fileText, size: 20),
-                  label: Text(controller.isGeneratingPdf.value ? 'Generating...' : 'Generate PDF'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              child: Obx(() {
+                final isBusy = controller.isGeneratingPdf.value;
+                return AbsorbPointer(
+                  absorbing: isBusy,
+                  child: Opacity(
+                    opacity: isBusy ? 0.5 : 1.0,
+                    child: PdfHandler.buildPdfActionMenu(
+                      context,
+                      (isDownload) => controller.generatePdf(
+                        context,
+                        isDownload: isDownload,
+                      ),
+                      isLoading: isBusy,
+                      customChild: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).primaryColor,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            isBusy
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Icon(
+                                    LucideIcons.fileText,
+                                    size: 20,
+                                    color: Colors.white,
+                                  ),
+                            const SizedBox(width: 8),
+                            Text(
+                              isBusy ? 'Generating...' : 'Generate PDF',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-              ),
+                );
+              }),
             ),
           ],
         );
@@ -821,47 +857,66 @@ class MarksheetScreen extends StatelessWidget {
             ? Card(
                 elevation: 2,
                 color: isDarkMode ? Colors.grey[850] : Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
-                  child: LayoutBuilder(builder: (context, constraints) {
-                    bool useRow = constraints.maxWidth > 700;
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Filters',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: isDarkMode ? Colors.white : Colors.black,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      bool useRow = constraints.maxWidth > 700;
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Filters',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: isDarkMode ? Colors.white : Colors.black,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 16),
-                        if (useRow)
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(child: _buildFilterDropdowns(controller, 'Year')),
-                              const SizedBox(width: 12),
-                              Expanded(child: _buildFilterDropdowns(controller, 'Task')),
-                              const SizedBox(width: 12),
-                              Expanded(child: _buildFilterDropdowns(controller, 'Subject')),
-                            ],
-                          )
-                        else
-                          Column(
-                            children: [
-                              _buildFilterDropdowns(controller, 'Year'),
-                              const SizedBox(height: 12),
-                              _buildFilterDropdowns(controller, 'Task'),
-                              const SizedBox(height: 12),
-                              _buildFilterDropdowns(controller, 'Subject'),
-                            ],
-                          ),
-                      ],
-                    );
-                  }),
+                          const SizedBox(height: 16),
+                          if (useRow)
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: _buildFilterDropdowns(
+                                    controller,
+                                    'Year',
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: _buildFilterDropdowns(
+                                    controller,
+                                    'Task',
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: _buildFilterDropdowns(
+                                    controller,
+                                    'Subject',
+                                  ),
+                                ),
+                              ],
+                            )
+                          else
+                            Column(
+                              children: [
+                                _buildFilterDropdowns(controller, 'Year'),
+                                const SizedBox(height: 12),
+                                _buildFilterDropdowns(controller, 'Task'),
+                                const SizedBox(height: 12),
+                                _buildFilterDropdowns(controller, 'Subject'),
+                              ],
+                            ),
+                        ],
+                      );
+                    },
+                  ),
                 ),
               )
             : const SizedBox.shrink(),
@@ -872,29 +927,35 @@ class MarksheetScreen extends StatelessWidget {
   // Helper to choose the right dropdown logic
   Widget _buildFilterDropdowns(MarksheetController controller, String type) {
     if (type == 'Year') {
-      return Obx(() => _buildDropdown(
-            label: 'Year',
-            value: controller.selectedYear.value,
-            items: controller.yearOptions,
-            onChanged: controller.onYearChanged,
-            icon: LucideIcons.calendar,
-          ));
+      return Obx(
+        () => _buildDropdown(
+          label: 'Year',
+          value: controller.selectedYear.value,
+          items: controller.yearOptions,
+          onChanged: controller.onYearChanged,
+          icon: LucideIcons.calendar,
+        ),
+      );
     } else if (type == 'Task') {
-      return Obx(() => _buildDropdown(
-            label: 'Task Name',
-            value: controller.selectedTask.value,
-            items: controller.taskOptions,
-            onChanged: controller.onTaskChanged,
-            icon: LucideIcons.fileCode,
-          ));
+      return Obx(
+        () => _buildDropdown(
+          label: 'Task Name',
+          value: controller.selectedTask.value,
+          items: controller.taskOptions,
+          onChanged: controller.onTaskChanged,
+          icon: LucideIcons.fileCode,
+        ),
+      );
     } else {
-      return Obx(() => _buildDropdown(
-            label: 'Subject',
-            value: controller.selectedSubject.value,
-            items: controller.subjectOptions,
-            onChanged: controller.onSubjectChanged,
-            icon: LucideIcons.bookOpen,
-          ));
+      return Obx(
+        () => _buildDropdown(
+          label: 'Subject',
+          value: controller.selectedSubject.value,
+          items: controller.subjectOptions,
+          onChanged: controller.onSubjectChanged,
+          icon: LucideIcons.bookOpen,
+        ),
+      );
     }
   }
 
@@ -936,7 +997,8 @@ class MarksheetScreen extends StatelessWidget {
                   value: value,
                   dropdownColor: isDarkMode ? Colors.grey[800] : Colors.white,
                   icon: const Icon(LucideIcons.chevronDown, size: 18),
-                  isExpanded: true, // Internal expansion is fine if the parent container is constrained
+                  isExpanded:
+                      true, // Internal expansion is fine if the parent container is constrained
                   style: TextStyle(
                     fontSize: 14,
                     color: isDarkMode ? Colors.white : Colors.black,
@@ -948,7 +1010,10 @@ class MarksheetScreen extends StatelessWidget {
                       color: isDarkMode ? Colors.blue[300] : Colors.blue[700],
                     ),
                     border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
                   ),
                   items: items.map((option) {
                     return DropdownMenuItem<FilterOption>(
@@ -977,7 +1042,9 @@ class MarksheetScreen extends StatelessWidget {
         return Card(
           elevation: 2,
           color: isDarkMode ? Colors.grey[850] : Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: isWide
@@ -995,11 +1062,20 @@ class MarksheetScreen extends StatelessWidget {
                           ],
                         ),
                       ),
-                      Container(height: 50, width: 1, color: Colors.grey.withOpacity(0.3)),
+                      Container(
+                        height: 50,
+                        width: 1,
+                        color: Colors.grey.withOpacity(0.3),
+                      ),
                       const SizedBox(width: 20),
                       _buildMetric('Percentage', info.percentage, isDarkMode),
                       const SizedBox(width: 20),
-                      _buildMetric('Grade', info.remarksGrade, isDarkMode, isBadge: true),
+                      _buildMetric(
+                        'Grade',
+                        info.remarksGrade,
+                        isDarkMode,
+                        isBadge: true,
+                      ),
                     ],
                   )
                 : Column(
@@ -1014,8 +1090,17 @@ class MarksheetScreen extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          _buildMetric('Percentage', info.percentage, isDarkMode),
-                          _buildMetric('Grade', info.remarksGrade, isDarkMode, isBadge: true),
+                          _buildMetric(
+                            'Percentage',
+                            info.percentage,
+                            isDarkMode,
+                          ),
+                          _buildMetric(
+                            'Grade',
+                            info.remarksGrade,
+                            isDarkMode,
+                            isBadge: true,
+                          ),
                         ],
                       ),
                     ],
@@ -1026,19 +1111,50 @@ class MarksheetScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMetric(String label, String value, bool isDarkMode, {bool isBadge = false}) {
+  Widget _buildMetric(
+    String label,
+    String value,
+    bool isDarkMode, {
+    bool isBadge = false,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(fontSize: 12, color: isDarkMode ? Colors.grey[400] : Colors.grey[600])),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+          ),
+        ),
         const SizedBox(height: 4),
         isBadge
             ? Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(color: Colors.blue[100], borderRadius: BorderRadius.circular(6)),
-                child: Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue[900])),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.blue[100],
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue[900],
+                  ),
+                ),
               )
-            : Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black)),
+            : Text(
+                value,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: isDarkMode ? Colors.white : Colors.black,
+                ),
+              ),
       ],
     );
   }
@@ -1049,13 +1165,19 @@ class MarksheetScreen extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-        Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+        ),
       ],
     );
   }
 
   /// Build subject marks table with horizontal scrolling for smaller screens
-  Widget _buildSubjectMarksTable(BuildContext context, List<SubjectMark> subjects) {
+  Widget _buildSubjectMarksTable(
+    BuildContext context,
+    List<SubjectMark> subjects,
+  ) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Card(
@@ -1067,40 +1189,57 @@ class MarksheetScreen extends StatelessWidget {
         children: [
           const Padding(
             padding: EdgeInsets.all(16),
-            child: Text('Subject Marks', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            child: Text(
+              'Subject Marks',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
           ),
-          LayoutBuilder(builder: (context, constraints) {
-            return SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minWidth: constraints.maxWidth),
-                child: DataTable(
-                  columnSpacing: constraints.maxWidth > 600 ? 40 : 20,
-                  headingRowColor: WidgetStateProperty.all(isDarkMode ? Colors.grey[800] : Colors.grey[100]),
-                  columns: const [
-                    DataColumn(label: Text('Subject')),
-                    DataColumn(label: Text('Max')),
-                    DataColumn(label: Text('Pass')),
-                    DataColumn(label: Text('Obtained')),
-                  ],
-                  rows: subjects.map((subject) {
-                    return DataRow(cells: [
-                      DataCell(Text(subject.subjectName)),
-                      DataCell(Text(subject.maximumMarks.toStringAsFixed(1))),
-                      DataCell(Text(subject.passingMarks.toStringAsFixed(1))),
-                      DataCell(Text(
-                        subject.obtainedMarks.toStringAsFixed(1),
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: subject.isPassed ? Colors.green : Colors.red,
-                        ),
-                      )),
-                    ]);
-                  }).toList(),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                  child: DataTable(
+                    columnSpacing: constraints.maxWidth > 600 ? 40 : 20,
+                    headingRowColor: WidgetStateProperty.all(
+                      isDarkMode ? Colors.grey[800] : Colors.grey[100],
+                    ),
+                    columns: const [
+                      DataColumn(label: Text('Subject')),
+                      DataColumn(label: Text('Max')),
+                      DataColumn(label: Text('Pass')),
+                      DataColumn(label: Text('Obtained')),
+                    ],
+                    rows: subjects.map((subject) {
+                      return DataRow(
+                        cells: [
+                          DataCell(Text(subject.subjectName)),
+                          DataCell(
+                            Text(subject.maximumMarks.toStringAsFixed(1)),
+                          ),
+                          DataCell(
+                            Text(subject.passingMarks.toStringAsFixed(1)),
+                          ),
+                          DataCell(
+                            Text(
+                              subject.obtainedMarks.toStringAsFixed(1),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: subject.isPassed
+                                    ? Colors.green
+                                    : Colors.red,
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    }).toList(),
+                  ),
                 ),
-              ),
-            );
-          }),
+              );
+            },
+          ),
         ],
       ),
     );

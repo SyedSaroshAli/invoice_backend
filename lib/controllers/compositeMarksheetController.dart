@@ -3,12 +3,12 @@
 import 'package:get/get.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:flutter/material.dart';
+import 'package:school_management_system/utils/pdf_handler.dart';
 import 'package:printing/printing.dart';
 import 'package:school_management_system/models/compositeMarksheetModel.dart';
 import 'package:school_management_system/services/api_service.dart';
 import 'package:school_management_system/services/auth_service.dart';
-import 'dart:io';
-import 'package:path_provider/path_provider.dart';
 
 class CompositeMarksheetController extends GetxController {
   // Observable variables
@@ -253,7 +253,10 @@ class CompositeMarksheetController extends GetxController {
   }
 
   /// Generate PDF for selected marksheet
-  Future<void> generatePdf() async {
+  Future<void> generatePdf(
+    BuildContext context, {
+    required bool isDownload,
+  }) async {
     if (selectedMarksheet.value == null) {
       Get.snackbar(
         'Error',
@@ -305,10 +308,11 @@ class CompositeMarksheetController extends GetxController {
         ),
       );
 
-      await Printing.sharePdf(
-        bytes: await pdf.save(),
-        filename:
-            'Transcript_${marksheet.studentInfo.studentName.replaceAll(' ', '_')}_${marksheet.academicYear}.pdf',
+      await PdfHandler.handlePdfAction(
+        context,
+        await pdf.save(),
+        'Transcript_${marksheet.studentInfo.studentName.replaceAll(' ', '_')}_${marksheet.academicYear}.pdf',
+        isDownload: isDownload,
       );
 
       Get.snackbar(
