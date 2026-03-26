@@ -169,6 +169,20 @@ class AuthService {
     return null;
   }
 
+  /// Retrieves the list of parsed permissions assigned to the student.
+  Future<List<String>> getPermissions() async {
+    final prefs = await SharedPreferences.getInstance();
+    final data = prefs.getString(_userDataKey);
+    if (data != null) {
+      final map = jsonDecode(data) as Map<String, dynamic>;
+      final perms = map['permission'] as List<dynamic>?;
+      if (perms != null) {
+        return perms.map((e) => e.toString()).toList();
+      }
+    }
+    return [];
+  }
+
   Future<bool> isLoggedIn() async {
     final prefs = await SharedPreferences.getInstance();
     final loggedIn = prefs.getBool(_isLoggedInKey) ?? false;

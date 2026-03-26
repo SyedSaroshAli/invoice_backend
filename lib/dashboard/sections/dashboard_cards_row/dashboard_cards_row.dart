@@ -219,18 +219,30 @@ class DashboardCardsRow extends StatelessWidget {
   }
 }  */
 
-
 class DashboardCardsRow extends StatelessWidget {
-  const DashboardCardsRow({super.key});
+  final List<String> permissions;
+  const DashboardCardsRow({super.key, required this.permissions});
 
   @override
   Widget build(BuildContext context) {
     // 1. Inject Controllers
-    // We use Get.put so they are initialized as soon as the Dashboard builds.
-    // The AcademicProgressController now fetches the StudentID internally.
-    final AcademicProgressController academicController = Get.put(AcademicProgressController());
-    final AttendanceController attendanceController = Get.put(AttendanceController());
+    final AcademicProgressController academicController = Get.put(
+      AcademicProgressController(),
+    );
+    final AttendanceController attendanceController = Get.put(
+      AttendanceController(),
+    );
     final StudentFeeController feeController = Get.put(StudentFeeController());
+
+    final bool hasAttendance =
+        permissions.contains('HRMS.SelfViewAttendance') ||
+        permissions.contains('HRMS.ViewAttendance');
+    final bool hasFees = permissions.any(
+      (p) => p.startsWith('Student.Fee') || p.startsWith('Finance'),
+    );
+    final bool hasAcademic = permissions.any(
+      (p) => p.startsWith('Report') || p.startsWith('Student'),
+    );
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -240,11 +252,15 @@ class DashboardCardsRow extends StatelessWidget {
         if (constraints.maxWidth < 600) {
           return Column(
             children: [
-              const AcademicProgressCard(),
-              const SizedBox(height: spacing),
-              _buildAttendanceCard(attendanceController),
-              const SizedBox(height: spacing),
-              _buildNextFeeDueCard(feeController),
+              if (hasAcademic) ...[
+                const AcademicProgressCard(),
+                if (hasAttendance || hasFees) const SizedBox(height: spacing),
+              ],
+              if (hasAttendance) ...[
+                _buildAttendanceCard(attendanceController),
+                if (hasFees) const SizedBox(height: spacing),
+              ],
+              if (hasFees) _buildNextFeeDueCard(feeController),
             ],
           );
         }
@@ -256,39 +272,34 @@ class DashboardCardsRow extends StatelessWidget {
             spacing: spacing,
             runSpacing: spacing,
             children: [
-              SizedBox(
-                width: cardWidth,
-                child: const AcademicProgressCard(),
-              ),
-              SizedBox(
-                width: cardWidth,
-                child: _buildAttendanceCard(attendanceController),
-              ),
-              SizedBox(
-                width: cardWidth,
-                child: _buildNextFeeDueCard(feeController),
-              ),
+              if (hasAcademic)
+                SizedBox(width: cardWidth, child: const AcademicProgressCard()),
+              if (hasAttendance)
+                SizedBox(
+                  width: cardWidth,
+                  child: _buildAttendanceCard(attendanceController),
+                ),
+              if (hasFees)
+                SizedBox(
+                  width: cardWidth,
+                  child: _buildNextFeeDueCard(feeController),
+                ),
             ],
           );
         }
 
         // --- Desktop Layout (> 900px): Side-by-Side Row ---
-        // IntrinsicHeight ensures all cards stretch to the height of the tallest card.
         return IntrinsicHeight(
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Expanded(
-                child: AcademicProgressCard(),
-              ),
-              const SizedBox(width: spacing),
-              Expanded(
-                child: _buildAttendanceCard(attendanceController),
-              ),
-              const SizedBox(width: spacing),
-              Expanded(
-                child: _buildNextFeeDueCard(feeController),
-              ),
+              if (hasAcademic) const Expanded(child: AcademicProgressCard()),
+              if (hasAcademic && (hasAttendance || hasFees))
+                const SizedBox(width: spacing),
+              if (hasAttendance)
+                Expanded(child: _buildAttendanceCard(attendanceController)),
+              if (hasAttendance && hasFees) const SizedBox(width: spacing),
+              if (hasFees) Expanded(child: _buildNextFeeDueCard(feeController)),
             ],
           ),
         );
@@ -304,7 +315,8 @@ class DashboardCardsRow extends StatelessWidget {
         isLoading: controller.isDashboardLoading.value,
         present: summary?.present ?? 0,
         absent: summary?.absent ?? 0,
-        leave: summary?.late ?? 0, // Mapping 'late' to leave/other as per your UI
+        leave:
+            summary?.late ?? 0, // Mapping 'late' to leave/other as per your UI
         total: summary?.total ?? 0,
       );
     });
@@ -315,19 +327,13 @@ class DashboardCardsRow extends StatelessWidget {
     return Obx(() {
       // Show loading state if the fee controller is working
       if (controller.isLoading.value) {
-        return const NextFeeDueCard(
-          dueDate: 'Loading...',
-          feeAmount: '...',
-        );
+        return const NextFeeDueCard(dueDate: 'Loading...', feeAmount: '...');
       }
 
       final currentFee = controller.getCurrentMonthFee();
 
       if (currentFee == null) {
-        return const NextFeeDueCard(
-          dueDate: 'No Record',
-          feeAmount: 'N/A',
-        );
+        return const NextFeeDueCard(dueDate: 'No Record', feeAmount: 'N/A');
       }
 
       return NextFeeDueCard(

@@ -302,29 +302,33 @@ import '../../controllers/theme_controller.dart';
 class StudentDashboard extends StatelessWidget {
   const StudentDashboard({super.key});
 
-  Future<Map<String, String>> _loadUserData() async {
+  Future<Map<String, dynamic>> _loadUserData() async {
     final auth = AuthService();
     final name = await auth.getStudentName() ?? 'Student';
     final id = await auth.getStudentId() ?? '';
-    return {'name': name, 'id': id};
+    final permissions = await auth.getPermissions();
+    return {'name': name, 'id': id, 'permissions': permissions};
   }
 
   @override
   Widget build(BuildContext context) {
     final scaffoldKey = GlobalKey<ScaffoldState>();
     final ThemeController themeController = Get.find<ThemeController>();
-    
+
     // Get screen dimensions for responsive scaling
     final size = MediaQuery.of(context).size;
     final bool isTablet = size.width > 600;
     final bool isDesktop = size.width > 1024;
 
-    return FutureBuilder<Map<String, String>>(
+    return FutureBuilder<Map<String, dynamic>>(
       future: _loadUserData(),
       builder: (context, snapshot) {
         final studentName = snapshot.data?['name'] ?? 'Student';
         final studentId = snapshot.data?['id'] ?? '';
-        final studentEmail = studentId.isNotEmpty ? 'Student ID: $studentId' : '';
+        final List<String> permissions = snapshot.data?['permissions'] ?? [];
+        final studentEmail = studentId.isNotEmpty
+            ? 'Student ID: $studentId'
+            : '';
 
         return Scaffold(
           key: scaffoldKey,
@@ -342,7 +346,9 @@ class StudentDashboard extends StatelessWidget {
                 () => IconButton(
                   onPressed: () => themeController.toggleTheme(),
                   icon: Icon(
-                    themeController.isDarkMode ? Icons.light_mode : Icons.dark_mode,
+                    themeController.isDarkMode
+                        ? Icons.light_mode
+                        : Icons.dark_mode,
                   ),
                   tooltip: themeController.isDarkMode
                       ? 'Switch to Light Mode'
@@ -396,10 +402,9 @@ class StudentDashboard extends StatelessWidget {
                       children: [
                         CircleAvatar(
                           radius: isTablet ? 40 : 30,
-                          backgroundColor: Theme.of(context)
-                              .colorScheme
-                              .primary
-                              .withValues(alpha: 0.1),
+                          backgroundColor: Theme.of(
+                            context,
+                          ).colorScheme.primary.withValues(alpha: 0.1),
                           child: Text(
                             studentName.isNotEmpty
                                 ? studentName[0].toUpperCase()
@@ -416,7 +421,8 @@ class StudentDashboard extends StatelessWidget {
                           child: Text(
                             studentName,
                             overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(
                                   fontWeight: FontWeight.bold,
                                   fontSize: isTablet ? 22 : 18,
                                 ),
@@ -436,71 +442,98 @@ class StudentDashboard extends StatelessWidget {
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                        MaterialPageRoute(
+                          builder: (context) => const ProfileScreen(),
+                        ),
                       );
                     },
                   ),
-                  _DrawerItem(
-                    icon: LucideIcons.checkCircle,
-                    title: "Attendance",
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const AttendanceScreen()),
-                      );
-                    },
-                  ),
-                  _DrawerItem(
-                    icon: LucideIcons.bookOpen,
-                    title: "Marksheet",
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => MarksheetScreen()),
-                      );
-                    },
-                  ),
-                  _DrawerItem(
-                    icon: LucideIcons.table,
-                    title: "Composite Marksheet",
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => CompositeMarksheetScreen()),
-                      );
-                    },
-                  ),
-                  _DrawerItem(
-                    icon: LucideIcons.wallet,
-                    title: "Fee Details",
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const StudentFeeScreen()),
-                      );
-                    },
-                  ),
+                  if (permissions.contains('HRMS.SelfViewAttendance') ||
+                      permissions.contains('HRMS.ViewAttendance'))
+                    _DrawerItem(
+                      icon: LucideIcons.checkCircle,
+                      title: "Attendance",
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const AttendanceScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  if (permissions.any(
+                    (p) => p.startsWith('Report') || p.startsWith('Student'),
+                  ))
+                    _DrawerItem(
+                      icon: LucideIcons.bookOpen,
+                      title: "Marksheet",
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => MarksheetScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  if (permissions.any(
+                    (p) => p.startsWith('Report') || p.startsWith('Student'),
+                  ))
+                    _DrawerItem(
+                      icon: LucideIcons.table,
+                      title: "Composite Marksheet",
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => CompositeMarksheetScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  if (permissions.any(
+                    (p) =>
+                        p.startsWith('Student.Fee') || p.startsWith('Finance'),
+                  ))
+                    _DrawerItem(
+                      icon: LucideIcons.wallet,
+                      title: "Fee Details",
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const StudentFeeScreen(),
+                          ),
+                        );
+                      },
+                    ),
                   _DrawerItem(
                     icon: LucideIcons.bell,
                     title: "Notices",
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => NoticesScreen()),
+                        MaterialPageRoute(
+                          builder: (context) => NoticesScreen(),
+                        ),
                       );
                     },
                   ),
-                  _DrawerItem(
-                    icon: LucideIcons.contact,
-                    title: "Admit Card",
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => AdmitCardScreen()),
-                      );
-                    },
-                  ),
+                  if (permissions.contains('Report.AdmitCard'))
+                    _DrawerItem(
+                      icon: LucideIcons.contact,
+                      title: "Admit Card",
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => AdmitCardScreen(),
+                          ),
+                        );
+                      },
+                    ),
                 ],
               ),
             ),
@@ -513,7 +546,9 @@ class StudentDashboard extends StatelessWidget {
                   child: ConstrainedBox(
                     // Ensures content doesn't get too wide on Desktop/Tablets
                     constraints: BoxConstraints(
-                      maxWidth: isDesktop ? 1200 : (isTablet ? 800 : double.infinity),
+                      maxWidth: isDesktop
+                          ? 1200
+                          : (isTablet ? 800 : double.infinity),
                     ),
                     child: SafeArea(
                       child: Padding(
@@ -521,17 +556,17 @@ class StudentDashboard extends StatelessWidget {
                           horizontal: isTablet ? 32.0 : 16.0,
                           vertical: 24.0,
                         ),
-                        child: const Column(
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            UserIDSection(),
-                            SizedBox(height: 24),
-                            NoticesSection(),
-                            SizedBox(height: 24),
-                            // DashboardCardsRow should handle its own internal responsiveness 
+                            const UserIDSection(),
+                            const SizedBox(height: 24),
+                            const NoticesSection(),
+                            const SizedBox(height: 24),
+                            // DashboardCardsRow should handle its own internal responsiveness
                             // (e.g., using Wrap or GridView inside)
-                            DashboardCardsRow(),
-                            SizedBox(height: 24),
+                            DashboardCardsRow(permissions: permissions),
+                            const SizedBox(height: 24),
                           ],
                         ),
                       ),
@@ -565,9 +600,9 @@ class _DrawerItem extends StatelessWidget {
       leading: Icon(icon, color: Theme.of(context).iconTheme.color),
       title: Text(
         title,
-        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              fontWeight: FontWeight.w500,
-            ),
+        style: Theme.of(
+          context,
+        ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
       ),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       contentPadding: const EdgeInsets.symmetric(horizontal: 24),
