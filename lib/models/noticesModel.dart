@@ -1,13 +1,12 @@
-/// Notice model matching API response from GET /Notice/Get-Notices.
-///
-/// API returns: {noticeId, note, date, notice, isSelected}
 class NoticeModel {
   final int noticeId;
-  final String title; // mapped from API 'note'
-  final String description; // mapped from API 'notice'
+  final String title;
+  final String description;
   final DateTime date;
   final bool isSelected;
-  bool isNew; // calculated locally
+
+  // ✅ IMPORTANT: FILE FIELD FROM API
+  final String? fileUrl;
 
   NoticeModel({
     this.noticeId = 0,
@@ -15,11 +14,25 @@ class NoticeModel {
     required this.description,
     required this.date,
     this.isSelected = false,
-    this.isNew = false,
+    this.fileUrl,
   });
+
+  // ✅ SAFE FILE CHECK
+  bool get hasFile => fileUrl != null && fileUrl!.trim().isNotEmpty;
+
+  // ✅ FILE TYPE HELPERS (VERY USEFUL FOR UI)
+  bool get isPdf =>
+      hasFile && fileUrl!.toLowerCase().contains('.pdf');
+
+  bool get isImage =>
+      hasFile &&
+      (fileUrl!.toLowerCase().contains('.png') ||
+          fileUrl!.toLowerCase().contains('.jpg') ||
+          fileUrl!.toLowerCase().contains('.jpeg'));
 
   factory NoticeModel.fromJson(Map<String, dynamic> json) {
     DateTime parsedDate;
+
     try {
       parsedDate = DateTime.parse(json['date'] ?? '');
     } catch (_) {
@@ -30,13 +43,17 @@ class NoticeModel {
       noticeId: (json['noticeId'] ?? 0) is int
           ? json['noticeId']
           : int.tryParse(json['noticeId'].toString()) ?? 0,
-      title: (json['note'] ?? json['title'] ?? '').toString().trim(),
-      description: (json['notice'] ?? json['description'] ?? '')
-          .toString()
-          .trim(),
+
+      title: (json['note'] ?? '').toString().trim(),
+
+      description: (json['notice'] ?? '').toString().trim(),
+
       date: parsedDate,
+
       isSelected: json['isSelected'] ?? false,
-      isNew: false,
+
+      // ✅ FIXED: YOUR REAL API FIELD
+      fileUrl: json['imagePdf']?.toString(),
     );
   }
 
@@ -47,8 +64,7 @@ class NoticeModel {
       'notice': description,
       'date': date.toIso8601String(),
       'isSelected': isSelected,
+      'imagePdf': fileUrl,
     };
   }
-
-  void operator [](String other) {}
 }

@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -7,11 +8,14 @@ import 'package:printing/printing.dart';
 import 'dart:io';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:school_management_system/controllers/about_controller.dart';
 //import 'package:google_fonts/google_fonts.dart';
 //import 'package:flutter/services.dart' show NetworkAssetBundle, rootBundle;
 import 'package:school_management_system/controllers/attendance_controller.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:school_management_system/models/about_model.dart';
 import 'package:school_management_system/utils/pdf_handler.dart';
+import 'package:http/http.dart' as http;
 
 /*
 class AttendanceScreen extends StatelessWidget {
@@ -3782,13 +3786,28 @@ class _ActionButtons extends StatelessWidget {
       final interBold = pw.Font.helveticaBold();
       final merriweatherBold = pw.Font.timesBold();
       final dancingScriptBold = pw.Font.timesBoldItalic();
+      final about = Get.find<AboutController>().aboutData.value;
+
+      Uint8List? logoBytes;
+
+      if (about?.entityLogo != null) {
+        final response = await http.get(Uri.parse(about!.entityLogo));
+        logoBytes = response.bodyBytes;
+      }
 
       pdf.addPage(
         pw.MultiPage(
           pageFormat: PdfPageFormat.a4,
           margin: const pw.EdgeInsets.all(32),
+          footer: (pw.Context context) => _buildPdfFooter(),
           build: (ctx) => [
-            _buildPdfHeader(merriweatherBold, dancingScriptBold, interBold),
+            _buildPdfHeader(
+              merriweatherBold,
+              dancingScriptBold,
+              interBold,
+              about,
+              logoBytes,
+            ),
             pw.SizedBox(height: 20),
             _buildPdfTitle(),
             pw.SizedBox(height: 20),
@@ -3803,7 +3822,7 @@ class _ActionButtons extends StatelessWidget {
 
       final String rawName =
           'Attendance_${info['name']}_${controller.selectedMonth.value}'
-          '_${controller.selectedYear.value}.pdf';
+          '_${controller.selectedYear.value}_${DateTime.now().millisecondsSinceEpoch}.pdf';
 
       final String safeFileName = rawName.replaceAll(
         RegExp(r'[\\/:*?"<>|\s]'),
@@ -3821,7 +3840,7 @@ class _ActionButtons extends StatelessWidget {
     } catch (e) {
       Get.snackbar(
         "Error",
-        "Failed to generate PDF: $e",
+        "Failed to generate PDF",
         backgroundColor: Colors.red,
         colorText: Colors.white,
         duration: const Duration(seconds: 6),
@@ -3831,6 +3850,7 @@ class _ActionButtons extends StatelessWidget {
     }
   }
 
+  /*
   pw.Widget _buildPdfHeader(
     pw.Font titleFont,
     pw.Font subTitleFont,
@@ -3882,6 +3902,49 @@ class _ActionButtons extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+*/
+  pw.Widget _buildPdfHeader(
+    pw.Font titleFont,
+    pw.Font subTitleFont,
+    pw.Font boldFont,
+    AboutModel? about,
+    Uint8List? logoBytes,
+  ) {
+    if (about == null) {
+      return pw.Center(child: pw.Text("Loading..."));
+    }
+
+    return pw.Row(
+      mainAxisAlignment: pw.MainAxisAlignment.center,
+      crossAxisAlignment: pw.CrossAxisAlignment.center,
+      children: [
+        // 🖼 LOGO (FROM API)
+        pw.Container(
+          height: 50,
+          width: 50,
+          child: (logoBytes != null && logoBytes.isNotEmpty)
+              ? pw.FittedBox(
+                  fit: pw.BoxFit.contain,
+                  child: pw.Image(pw.MemoryImage(logoBytes)),
+                )
+              : pw.SizedBox(),
+        ),
+
+        pw.SizedBox(width: 10),
+
+        // 🏫 SCHOOL NAME (UNCHANGED UI)
+        pw.Text(
+          about.entityDesc,
+          style: pw.TextStyle(
+            font: titleFont,
+            fontSize: 20,
+            color: PdfColors.black,
+            fontWeight: pw.FontWeight.bold,
+          ),
+        ),
+      ],
     );
   }
 
@@ -3949,6 +4012,57 @@ class _ActionButtons extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  pw.Widget _buildPdfFooter() {
+    return pw.Row(
+      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+      children: [
+        // ⬅️ LEFT
+        pw.Text(
+          "Powered by KI Software Solutions",
+          style: pw.TextStyle(fontSize: 10),
+        ),
+
+        // ⬇️ CENTER (CLICKABLE + UNDERLINED)
+        pw.UrlLink(
+          destination: "https://www.kisoftwaressolutions.com/", // change this
+          child: pw.Text(
+            "Visit Our Website",
+            style: pw.TextStyle(
+              fontSize: 10,
+              color: PdfColors.blue,
+              decoration: pw.TextDecoration.underline,
+            ),
+          ),
+        ),
+
+        // ➡️ RIGHT
+        pw.UrlLink(
+          destination: "tel:+923197617561", // change this
+          child: pw.Text(
+            "+92 3197617561",
+            style: pw.TextStyle(
+              fontSize: 10,
+              color: PdfColors.blue,
+              decoration: pw.TextDecoration.underline,
+            ),
+          ),
+        ),
+      ],
+    );
+
+    /* pw.Container(
+    alignment: pw.Alignment.centerLeft,
+    padding: const pw.EdgeInsets.only(top: 10),
+    child: pw.Text(
+      'Powered by KI Software Solutions',
+      style: pw.TextStyle(
+        fontSize: 9,
+        color: PdfColors.grey700,
+      ),
+    ),
+  );*/
   }
 }
 

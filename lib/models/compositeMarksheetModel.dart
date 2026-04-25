@@ -1,5 +1,4 @@
-/// Composite Marksheet Model
-/// Shows all exams/assessments for a complete academic year
+
 library;
 // ignore_for_file: file_names
 

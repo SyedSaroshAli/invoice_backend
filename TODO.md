@@ -1,5 +1,21 @@
-- [x] 1. Create &#x27;KI Software Solutions&#x27; folder in Downloads &amp; save PDF with proper permissions"
-</xai:function_call >
+# PDF Table Alignment Fix - AdmitCardScreen
 
-<xai:function_call name="attempt_completion">
-<parameter name="result">Fixed PDF save issue in attendance_screen.dart. Changes: Replaced Printing.sharePdf with direct file save to /storage/emulated/0/Download/KI Software Solutions/. Added permission check, dir creation, filename sanitization, file verification, exact path in success snackbar. Folder now created, PDF saved, no more misleading msg. Test: flutter run on Android device/emulator, generate PDF, check Downloads folder.TODO.md updated. Run `cd c:/Users/ateeb/Desktop/Flutter_projects/SMS_KI && flutter clean && flutter pub get && flutter run` to test.
+## Plan Status: ✅ Approved
+
+**TODO Checklist:**
+
+### 1. [ ] Create this TODO.md file ✅
+### 2. [✅] Edit lib/dashboard/Drawer_Screens/admitcardScreen.dart
+   - [ ] Update _buildPdfTable(): 
+     - Left table: 3 separate rows with flex 4+8 (Student), 4+8 (Father), 4+3+2+4 (Class+Section)
+     - Photo: flex4 with dynamic stretch height (remove fixed 69)
+     - Bottom row: flex 3+3+2+2+2+2 exactly
+     - Match borders/padding
+### 3. [ ] Test PDF generation
+   - [ ] Run app, load admitcard, generate PDF
+   - [ ] Verify alignment matches UI exactly (flex ratios, photo height, borders)
+### 4. [ ] Update TODO.md with completion ✅
+### 5. [ ] Attempt completion
+
+**Current Step: 2 - Editing file**
+

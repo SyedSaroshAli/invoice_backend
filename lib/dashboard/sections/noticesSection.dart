@@ -1,175 +1,6 @@
-/* import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'package:lucide_icons/lucide_icons.dart';
-import 'package:school_management_system/controllers/noticeController.dart';
-import 'package:school_management_system/dashboard/Drawer_Screens/NoticesScreen.dart';
 
-class NoticesSection extends StatelessWidget {
-  const NoticesSection({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final NoticesController noticesController = Get.find<NoticesController>();
-
-    // Icon/color mapping for visual variety
-    final List<Map<String, dynamic>> iconStyles = [
-      {'icon': LucideIcons.calendar, 'color': const Color(0xFFEF4444)},
-      {'icon': LucideIcons.banknote, 'color': const Color(0xFFF59E0B)},
-      {'icon': LucideIcons.award, 'color': const Color(0xFF3B82F6)},
-      {'icon': LucideIcons.users, 'color': const Color(0xFF10B981)},
-      {'icon': LucideIcons.bell, 'color': const Color(0xFF8B5CF6)},
-      {'icon': LucideIcons.bookOpen, 'color': const Color(0xFFEC4899)},
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Notices',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              TextButton(onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => NoticesScreen()),
-                );
-              }, child: const Text('View All')),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 90,
-          child: Obx(() {
-            if (noticesController.isLoading.value) {
-              return const Center(child: CircularProgressIndicator());
-            }
-
-            if (noticesController.errorMessage.isNotEmpty) {
-              return Center(
-                child: Text(
-                  noticesController.errorMessage.value,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.error,
-                  ),
-                ),
-              );
-            }
-
-            if (noticesController.notices.isEmpty) {
-              return Center(
-                child: Text(
-                  'No notices available',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              );
-            }
-
-            return ListView.builder(
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              itemCount: noticesController.notices.length > 3
-                  ? 3
-                  : noticesController.notices.length,
-              itemBuilder: (context, index) {
-                final notice = noticesController.notices[index];
-                final style = iconStyles[index % iconStyles.length];
-                final dateStr =
-                    '${_monthName(notice.date.month)} ${notice.date.day}';
-
-                return Padding(
-                  padding: const EdgeInsets.only(right: 12),
-                  child: SizedBox(
-                    width: 260,
-                    child: Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 44,
-                              height: 44,
-                              decoration: BoxDecoration(
-                                // ignore: deprecated_member_use
-                                color: (style['color'] as Color).withOpacity(
-                                  0.1,
-                                ),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(
-                                style['icon'] as IconData,
-                                color: style['color'] as Color,
-                                size: 24,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    notice.title.isNotEmpty
-                                        ? notice.title
-                                        : notice.description,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleSmall
-                                        ?.copyWith(fontWeight: FontWeight.bold),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    dateStr,
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.bodySmall,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            );
-          }),
-        ),
-      ],
-    );
-  }
-
-  String _monthName(int m) {
-    const names = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return names[m - 1];
-  }
-}*/ 
-
+// ignore_for_file: deprecated_member_use
+/*
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -550,5 +381,128 @@ class NoticesSection extends StatelessWidget {
       'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
     ];
     return names[m - 1];
+  }
+} */
+
+// ignore_for_file: deprecated_member_use
+
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:school_management_system/controllers/noticeController.dart';
+import 'package:school_management_system/dashboard/Drawer_Screens/notice_details_dialog.dart';
+
+class NoticesSection extends StatelessWidget {
+  const NoticesSection({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final NoticesController controller = Get.find<NoticesController>();
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              "Notices",
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 10),
+
+        Obx(() {
+          if (controller.isLoading.value) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (controller.notices.isEmpty) {
+            return Text(
+              "No notices available",
+              style: theme.textTheme.bodySmall,
+            );
+          }
+
+          final notices = controller.notices.take(3).toList();
+
+          return SizedBox(
+            height: 115,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: notices.length,
+              itemBuilder: (context, index) {
+                final notice = notices[index];
+
+                return GestureDetector(
+                  onTap: () {
+                    showNoticeDetails(context, notice);
+                  },
+                  child: Container(
+                    width: 270,
+                    margin: const EdgeInsets.only(right: 12),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: theme.cardColor, // ✅ FIXED (dark mode safe)
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: theme.dividerColor.withOpacity(0.3),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: theme.shadowColor.withOpacity(0.05),
+                          blurRadius: 6,
+                        )
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          notice.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+
+                        const SizedBox(height: 6),
+
+                        Text(
+                          notice.description,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.textTheme.bodySmall?.color
+                                ?.withOpacity(0.75),
+                          ),
+                        ),
+
+                        const SizedBox(height: 8),
+
+                        Text(
+                          "Read More →",
+                          style: TextStyle(
+                            color: theme.colorScheme.primary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          );
+        }),
+      ],
+    );
   }
 }

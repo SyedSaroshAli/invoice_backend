@@ -25,39 +25,6 @@ class UserIDSection extends StatelessWidget {
             padding: const EdgeInsets.all(24),
             child: Row(
               children: [
-                // Profile Avatar
-               /* Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: const Color(0xFFE0F2FE),
-                      width: 3,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.primary.withValues(alpha: 0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: CircleAvatar(
-                    radius: 36,
-                    backgroundColor: const Color(0xFFE0F2FE),
-                    child: Text(
-                      studentName.isNotEmpty
-                          ? studentName[0].toUpperCase()
-                          : "S",
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                  ),
-                ),*/
 
                 const SizedBox(width: 24),
 
@@ -67,15 +34,6 @@ class UserIDSection extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      /*
-                      Text(
-                        "Welcome Back 👋",
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.primary,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.5,
-                        ),
-                      ),*/
                       const SizedBox(height: 4),
                       Text(
                         studentName,

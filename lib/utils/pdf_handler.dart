@@ -27,7 +27,7 @@ class PdfHandler {
 
       Directory? directory;
       if (Platform.isAndroid) {
-        directory = Directory('/storage/emulated/0/KI Software Solutions');
+        directory = Directory('/storage/emulated/0/Downloads/KI Software Solutions');
         if (!await directory.exists()) {
           try {
             await directory.create(recursive: true);
@@ -61,7 +61,7 @@ class PdfHandler {
         await file.writeAsBytes(bytes);
         Get.snackbar(
           "Success",
-          "PDF saved to: ${file.path}",
+          "PDF downloaded successfully",
           snackPosition: SnackPosition.BOTTOM,
           backgroundColor: Colors.green,
           colorText: Colors.white,
@@ -77,7 +77,7 @@ class PdfHandler {
     } catch (e) {
       Get.snackbar(
         "Error",
-        "Failed to save PDF: $e",
+        "Failed to save PDF",
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.red,
         colorText: Colors.white,

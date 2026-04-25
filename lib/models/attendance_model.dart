@@ -1,15 +1,4 @@
-/// Attendance models matching the API response from POST /Attendance/GetAttendance.
-///
-/// Response shape:
-/// {
-///   "studentId": "506",
-///   "month": "01",
-///   "present": 20,
-///   "absent": 2,
-///   "late": 1,
-///   "total": 23,
-///   "records": [{ "date": "2025-01-01", "status": "P" }, ...]
-/// }
+
 library;
 
 class AttendanceResponse {
